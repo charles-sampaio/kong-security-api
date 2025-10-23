@@ -50,4 +50,32 @@ impl User {
             refresh_tokens: Some(vec![]),
         }
     }
+
+    pub fn is_admin(&self) -> bool {
+        self.roles
+            .as_ref()
+            .map_or(false, |roles| roles.contains(&"admin".to_string()))
+    }
+
+    pub fn has_role(&self, role: &str) -> bool {
+        self.roles
+            .as_ref()
+            .map_or(false, |roles| roles.contains(&role.to_string()))
+    }
+
+    pub fn add_role(&mut self, role: String) {
+        if let Some(roles) = &mut self.roles {
+            if !roles.contains(&role) {
+                roles.push(role);
+            }
+        } else {
+            self.roles = Some(vec![role]);
+        }
+    }
+
+    pub fn remove_role(&mut self, role: &str) {
+        if let Some(roles) = &mut self.roles {
+            roles.retain(|r| r != role);
+        }
+    }
 }
