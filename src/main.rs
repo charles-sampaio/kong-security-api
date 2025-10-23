@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let db = connect_to_database().await.expect("Failed to connect to database");
-    println!("🚀 Server started at http://localhost:8080");
+    println!("Server started");
 
     HttpServer::new(move || {
         App::new()
