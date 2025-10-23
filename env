@@ -1,0 +1,4 @@
+MONGODB_URI=mongodb+srv://space_user:yNPBfuIk266JjjjO@clusterdbmongoatlas.mc74nzn.mongodb.net/kong-security-api?retryWrites=true&w=majority&appName=ClusterDbMongoAtlas
+MONGODB_DB=rust_jwt_api
+JWT_SECRET=nQv?J/&dNnB*qni@@KonG
+JWT_EXPIRATION_HOURS=2
