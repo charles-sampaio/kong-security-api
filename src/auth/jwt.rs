@@ -26,11 +26,11 @@ pub struct RefreshTokenClaims {
 }
 
 fn get_private_key() -> Vec<u8> {
-    include_bytes!("../private.pem").to_vec()
+    include_bytes!("../../private.pem").to_vec()
 }
 
 fn get_public_key() -> Vec<u8> {
-    include_bytes!("../public.pem").to_vec()
+    include_bytes!("../../public.pem").to_vec()
 }
 
 // Gera JWT com RS256
@@ -94,13 +94,12 @@ pub fn verify_jwt(token: &str, aud: &str, iss: &str) -> Option<Claims> {
     ).ok().map(|TokenData { claims, .. }| claims)
 }
 
+pub fn verify_refresh_token(token: &str) -> Option<RefreshTokenClaims> {
+    let validation = Validation::new(Algorithm::RS256);
 
- pub fn verify_refresh_token(token: &str) -> Option<RefreshTokenClaims> {
-     let validation = Validation::new(Algorithm::RS256);
-
-     decode::<RefreshTokenClaims>(
-         token,
-         &DecodingKey::from_rsa_pem(&get_public_key()).ok()?,
-         &validation
-     ).ok().map(|TokenData { claims, .. }| claims)
- }
+    decode::<RefreshTokenClaims>(
+        token,
+        &DecodingKey::from_rsa_pem(&get_public_key()).ok()?,
+        &validation
+    ).ok().map(|TokenData { claims, .. }| claims)
+}
