@@ -56,10 +56,10 @@ impl UserAgentInfo {
             Some("Windows".to_string())
         } else if ua_lower.contains("mac") && !ua_lower.contains("iphone") && !ua_lower.contains("ipad") {
             Some("macOS".to_string())
-        } else if ua_lower.contains("linux") {
-            Some("Linux".to_string())
         } else if ua_lower.contains("android") {
             Some("Android".to_string())
+        } else if ua_lower.contains("linux") {
+            Some("Linux".to_string())
         } else if ua_lower.contains("iphone") || ua_lower.contains("ipad") {
             Some("iOS".to_string())
         } else {

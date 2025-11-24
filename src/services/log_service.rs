@@ -13,7 +13,7 @@ impl LogService {
     }
 
     pub fn logs_collection(&self) -> Collection<LoginLog> {
-        self.db.collection("Logs")
+        self.db.collection("logs")
     }
 
     pub async fn save_login_log(&self, login_log: &LoginLog) -> Result<mongodb::bson::oid::ObjectId, Box<dyn Error + Send + Sync>> {

@@ -1,6 +1,6 @@
 use actix_web::HttpRequest;
 use crate::models::User;
-use crate::auth::jwt::{verify_jwt, Claims};
+use crate::auth::jwt::verify_jwt;
 use mongodb::bson::oid::ObjectId;
 use std::str::FromStr;
 
