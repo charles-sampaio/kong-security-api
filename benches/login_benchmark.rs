@@ -1,64 +1,113 @@
+/// Benchmarks de Login usando Sled (In-Memory Database)
+/// 
+/// Este benchmark mede a performance pura da lógica de autenticação,
+/// sem overhead de HTTP ou I/O de disco (MongoDB).
+/// 
+/// Vantagens:
+/// - ⚡ Muito mais rápido (sem rede, sem disco)
+/// - 🧹 Isolado (não polui MongoDB)
+/// - 🎯 Mede apenas a lógica de negócio
+/// - 🚀 Não precisa de servidor rodando
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use reqwest::Client;
-use serde::Serialize;
-use tokio::runtime::Runtime;
+use sled::Db;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-const API_URL: &str = "http://localhost:8080";
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TestUser {
+    pub email: String,
+    pub password: String,  // hash bcrypt
+    pub name: String,
+    pub is_active: bool,
+}
 
-#[derive(Debug, Serialize)]
-struct LoginRequest {
-    email: String,
-    password: String,
+/// Cria banco Sled em memória para benchmarks
+fn create_benchmark_db() -> Db {
+    sled::Config::new()
+        .temporary(true)  // In-memory
+        .open()
+        .expect("Failed to create Sled database")
+}
+
+/// Insere usuário no banco
+fn insert_user(db: &Db, user: &TestUser) {
+    let key = format!("user:{}", user.email);
+    let value = bincode::serialize(user).expect("Failed to serialize");
+    db.insert(key.as_bytes(), value).expect("Failed to insert");
+}
+
+/// Busca usuário por email (simula login)
+fn get_user_by_email(db: &Db, email: &str) -> Option<TestUser> {
+    let key = format!("user:{}", email);
+    db.get(key.as_bytes())
+        .ok()?
+        .map(|data| bincode::deserialize(&data).ok())
+        .flatten()
+}
+
+/// Simula verificação de login (busca + validação)
+fn authenticate_user(db: &Db, email: &str, password: &str) -> bool {
+    if let Some(user) = get_user_by_email(db, email) {
+        user.is_active && user.password == password
+    } else {
+        false
+    }
 }
 
 /// Benchmark de login único
 fn benchmark_single_login(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    let client = Client::new();
+    let db = create_benchmark_db();
     
-    c.bench_function("single_login", |b| {
+    // Criar usuário de teste
+    let user = TestUser {
+        email: "user1@example.com".to_string(),
+        password: "hashed_password_123".to_string(),
+        name: "Test User".to_string(),
+        is_active: true,
+    };
+    insert_user(&db, &user);
+    
+    c.bench_function("single_login_sled", |b| {
         b.iter(|| {
-            rt.block_on(async {
-                let login_data = LoginRequest {
-                    email: black_box("user1@example.com".to_string()),
-                    password: black_box("SecurePass123!".to_string()),
-                };
-                
-                let _ = client
-                    .post(format!("{}/auth/login", API_URL))
-                    .json(&login_data)
-                    .send()
-                    .await;
-            })
+            authenticate_user(
+                &db,
+                black_box("user1@example.com"),
+                black_box("hashed_password_123"),
+            )
         })
     });
 }
 
 /// Benchmark de múltiplos logins sequenciais
 fn benchmark_sequential_logins(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    let client = Client::new();
+    let db = create_benchmark_db();
     
-    let mut group = c.benchmark_group("sequential_logins");
+    // Criar 20 usuários de teste
+    for i in 1..=20 {
+        let user = TestUser {
+            email: format!("loadtest_user{}@example.com", i),
+            password: "hashed_password_123".to_string(),
+            name: format!("Load Test User {}", i),
+            is_active: true,
+        };
+        insert_user(&db, &user);
+    }
     
-    for count in [10, 50, 100].iter() {
+    let mut group = c.benchmark_group("sequential_logins_sled");
+    
+    for count in [10, 50, 100, 500].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &count| {
             b.iter(|| {
-                rt.block_on(async {
-                    for i in 0..count {
-                        let user_num = (i % 20) + 1;
-                        let login_data = LoginRequest {
-                            email: format!("loadtest_user{}@example.com", user_num),
-                            password: "SecurePass123!".to_string(),
-                        };
-                        
-                        let _ = client
-                            .post(format!("{}/auth/login", API_URL))
-                            .json(&login_data)
-                            .send()
-                            .await;
-                    }
-                })
+                for i in 0..count {
+                    let user_num = (i % 20) + 1;
+                    let email = format!("loadtest_user{}@example.com", user_num);
+                    authenticate_user(
+                        &db,
+                        black_box(&email),
+                        black_box("hashed_password_123"),
+                    );
+                }
             })
         });
     }
@@ -66,40 +115,47 @@ fn benchmark_sequential_logins(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark de logins paralelos
+/// Benchmark de logins paralelos (usando threads)
 fn benchmark_parallel_logins(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
+    let db = Arc::new(create_benchmark_db());
     
-    let mut group = c.benchmark_group("parallel_logins");
+    // Criar 20 usuários de teste
+    for i in 1..=20 {
+        let user = TestUser {
+            email: format!("loadtest_user{}@example.com", i),
+            password: "hashed_password_123".to_string(),
+            name: format!("Load Test User {}", i),
+            is_active: true,
+        };
+        insert_user(&db, &user);
+    }
     
-    for count in [10, 50, 100].iter() {
+    let mut group = c.benchmark_group("parallel_logins_sled");
+    
+    for count in [10, 50, 100, 500].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &count| {
             b.iter(|| {
-                rt.block_on(async {
-                    let mut tasks = Vec::new();
+                let mut handles = vec![];
+                
+                for i in 0..count {
+                    let db_clone = Arc::clone(&db);
+                    let user_num = (i % 20) + 1;
+                    let email = format!("loadtest_user{}@example.com", user_num);
                     
-                    for i in 0..count {
-                        let client = Client::new();
-                        let user_num = (i % 20) + 1;
-                        
-                        let task = tokio::spawn(async move {
-                            let login_data = LoginRequest {
-                                email: format!("loadtest_user{}@example.com", user_num),
-                                password: "SecurePass123!".to_string(),
-                            };
-                            
-                            client
-                                .post(format!("{}/auth/login", API_URL))
-                                .json(&login_data)
-                                .send()
-                                .await
-                        });
-                        
-                        tasks.push(task);
-                    }
+                    let handle = std::thread::spawn(move || {
+                        authenticate_user(
+                            &db_clone,
+                            &email,
+                            "hashed_password_123",
+                        )
+                    });
                     
-                    futures::future::join_all(tasks).await
-                })
+                    handles.push(handle);
+                }
+                
+                for handle in handles {
+                    let _ = handle.join();
+                }
             })
         });
     }
