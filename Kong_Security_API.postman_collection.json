@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "Kong Security API",
-		"description": "Collection completa da Kong Security API com autenticação JWT e recuperação de senha",
+		"description": "Complete Kong Security API collection with JWT authentication and password reset",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -34,7 +34,7 @@
 								"register"
 							]
 						},
-						"description": "Registra um novo usuário no sistema"
+						"description": "Register a new user in the system"
 					},
 					"response": []
 				},
@@ -48,7 +48,7 @@
 									"if (pm.response.code === 200) {",
 									"    var jsonData = pm.response.json();",
 									"    pm.environment.set(\"jwt_token\", jsonData.token);",
-									"    console.log(\"Token JWT salvo: \" + jsonData.token);",
+									"    console.log(\"JWT token saved: \" + jsonData.token);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -77,7 +77,7 @@
 								"login"
 							]
 						},
-						"description": "Faz login e retorna um token JWT (salvo automaticamente)"
+						"description": "Login and get a JWT token (automatically saved)"
 					},
 					"response": []
 				},
@@ -106,12 +106,12 @@
 								"me"
 							]
 						},
-						"description": "Retorna informações do usuário autenticado (requer token JWT)"
+						"description": "Get authenticated user information (requires JWT token)"
 					},
 					"response": []
 				}
 			],
-			"description": "Endpoints de autenticação e gerenciamento de usuários"
+			"description": "Authentication and user management endpoints"
 		},
 		{
 			"name": "Password Reset",
@@ -123,16 +123,16 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Extrair token do response (agora em campo 'token')",
+									"// Extract token from response (now in 'token' field)",
 									"if (pm.response.code === 200) {",
 									"    var jsonData = pm.response.json();",
 									"    ",
-									"    // Em modo DEV, o campo 'token' existe no response",
+									"    // In DEV mode, the 'token' field exists in response",
 									"    if (jsonData.token) {",
 									"        pm.environment.set(\"reset_token\", jsonData.token);",
-									"        console.log(\"Token de reset salvo: \" + jsonData.token);",
+									"        console.log(\"Reset token saved: \" + jsonData.token);",
 									"    } else {",
-									"        console.log(\"Token não retornado (modo produção - enviado por email)\");",
+									"        console.log(\"Token not returned (production mode - sent by email)\");",
 									"    }",
 									"}"
 								],
@@ -163,7 +163,7 @@
 								"request"
 							]
 						},
-						"description": "Solicita reset de senha. Gera um token único e envia por email.\n\n**Em modo DEV:** O token é retornado no response e salvo automaticamente.\n\n**Em produção:** O token é enviado apenas por email."
+						"description": "Request password reset. Generates a unique token and sends by email.\n\n**In DEV mode:** Token is returned in response and automatically saved.\n\n**In production:** Token is sent only by email."
 					},
 					"response": []
 				},
@@ -192,7 +192,7 @@
 								"validate"
 							]
 						},
-						"description": "Valida se o token de reset é válido, não expirou e não foi usado.\n\n**Opcional:** Frontend pode usar este endpoint para validar antes de mostrar formulário de nova senha.\n\n**Usa:** Token salvo automaticamente do request anterior."
+						"description": "Validate if the reset token is valid, not expired and not used.\n\n**Optional:** Frontend can use this endpoint to validate before showing new password form.\n\n**Uses:** Token automatically saved from previous request."
 					},
 					"response": []
 				},
@@ -221,7 +221,7 @@
 								"confirm"
 							]
 						},
-						"description": "Confirma o reset de senha com o token válido.\n\n**Ações:**\n- Valida o token\n- Atualiza a senha do usuário (hash bcrypt)\n- Marca o token como usado\n- Invalida todos os outros tokens do mesmo email\n\n**Validações:**\n- Senha deve ter no mínimo 8 caracteres\n- Token deve ser válido, não expirado e não usado"
+						"description": "Confirm password reset with valid token.\n\n**Actions:**\n- Validate token\n- Update user password (bcrypt hash)\n- Mark token as used\n- Invalidate all other tokens for same email\n\n**Validations:**\n- Password must be at least 8 characters\n- Token must be valid, not expired and not used"
 					},
 					"response": []
 				},
@@ -250,12 +250,12 @@
 								"confirm"
 							]
 						},
-						"description": "**Teste de segurança:** Tenta reusar um token já usado.\n\n**Esperado:** Erro 400 - \"Token inválido ou expirado\"\n\nDemonstra que tokens são de uso único."
+						"description": "**Security test:** Try to reuse an already used token.\n\n**Expected:** Error 400 - \"Invalid or expired token\"\n\nDemonstrates that tokens are single-use only."
 					},
 					"response": []
 				}
 			],
-			"description": "Fluxo completo de recuperação de senha com tokens de uso único"
+			"description": "Complete password recovery flow with single-use tokens"
 		},
 		{
 			"name": "Health Check",
@@ -274,7 +274,7 @@
 								"health"
 							]
 						},
-						"description": "Verifica se a API está online"
+						"description": "Check if the API is online"
 					},
 					"response": []
 				}
