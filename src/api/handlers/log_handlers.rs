@@ -2,7 +2,6 @@ use actix_web::{web, HttpRequest, HttpResponse, Result};
 use mongodb::Database;
 use serde::Deserialize;
 use crate::auth::verify_jwt_token;
-use crate::models::{User, LoginLog};
 use crate::services::LogService;
 
 #[derive(Deserialize)]

@@ -41,10 +41,14 @@ This API was designed to be a centralized authentication service that can be eas
 - **Access Control**: Role-based system
 - **Security**: Password hashing with bcrypt (cost 12)
 - **Persistence**: MongoDB integration
-- **Logging**: Structured logging system
+- **Logging**: Comprehensive audit logging with login tracking
 - **Refresh Tokens**: Secure token renewal
-- **Validation**: Rigorous input data validation
+- **Validation**: Rigorous input data validation with password strength requirements
 - **Performance**: High-performance Actix-web framework
+- **API Documentation**: Interactive Swagger/OpenAPI documentation
+- **CORS Protection**: Configurable cross-origin resource sharing
+- **SQL Injection Prevention**: Input sanitization and validation
+- **XSS Prevention**: HTML/script tag filtering
 
 ## 🛠 Technologies
 
@@ -54,9 +58,16 @@ This API was designed to be a centralized authentication service that can be eas
 - **Tokio** - Asynchronous runtime
 
 ### Authentication & Security
-- **jsonwebtoken 9** - JWT implementation
+- **jsonwebtoken 9** - JWT implementation (RS256)
 - **bcrypt 0.15** - Password hashing
+- **actix-cors 0.7** - CORS middleware
+- **validator 0.18** - Input validation
+- **regex 1** - Pattern matching for security
 - **chrono 0.4** - Date/timestamp manipulation
+
+### Documentation
+- **utoipa 4** - OpenAPI documentation generation
+- **utoipa-swagger-ui 6** - Interactive Swagger UI
 
 ### Database
 - **MongoDB 3.3.0** - NoSQL database
@@ -186,9 +197,29 @@ The server will be available at: `http://localhost:8080`
 http://localhost:8080
 ```
 
+### Quick Reference
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/health` | ❌ No | Health check and security features |
+| POST | `/auth/register` | ❌ No | Register new user |
+| POST | `/auth/login` | ❌ No | Login and get JWT token |
+| GET | `/auth/protected` | ✅ Yes | Protected resource (example) |
+| GET | `/api/logs/my-logins` | ✅ Yes | Get user's login history |
+| GET | `/api/admin/logs` | ✅ Yes (Admin) | Get all system logs |
+| GET | `/api/admin/logs/stats` | ✅ Yes (Admin) | Get login statistics |
+
+### Documentation & Testing
+
+- **Swagger UI**: http://localhost:8080/swagger-ui/
+- **OpenAPI Spec**: http://localhost:8080/api-docs/openapi.json
+- **Postman Collection**: `Kong_Security_API.postman_collection.json`
+
+---
+
 ### 1. User Registration
 
-**POST** `/register`
+**POST** `/auth/register`
 
 Registers a new user in the system.
 
@@ -211,7 +242,7 @@ Registers a new user in the system.
 
 **Example with curl:**
 ```bash
-curl -X POST http://localhost:8080/register \
+curl -X POST http://localhost:8080/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -221,7 +252,7 @@ curl -X POST http://localhost:8080/register \
 
 ### 2. User Login
 
-**POST** `/login`
+**POST** `/auth/login`
 
 Authenticates a user and returns access tokens.
 
@@ -248,7 +279,7 @@ Authenticates a user and returns access tokens.
 
 **Example with curl:**
 ```bash
-curl -X POST http://localhost:8080/login \
+curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -258,7 +289,7 @@ curl -X POST http://localhost:8080/login \
 
 ### 3. User Profile
 
-**GET** `/profile`
+**GET** `/auth/protected`
 
 Returns authenticated user information.
 
@@ -285,7 +316,7 @@ Authorization: Bearer <access_token>
 
 **Example with curl:**
 ```bash
-curl -X GET http://localhost:8080/profile \
+curl -X GET http://localhost:8080/auth/protected \
   -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -399,34 +430,189 @@ kong-security-api/
 
 ## 🧪 Testing
 
-### Run Tests
+### 🦀 Sistema de Testes em Rust
+
+Todo o sistema de testes foi desenvolvido 100% em Rust nativo com **Sled** (banco em memória).
+
+**Documentação:**
+- 🚀 **[SLED_TESTING.md](SLED_TESTING.md)** - **Banco em memória para testes (equivalente ao H2)**
+- 📘 **[QUICK_START.md](QUICK_START.md)** - Início rápido
+- 📊 **[VALIDATION_RESULTS.md](VALIDATION_RESULTS.md)** - Resultados validados
+- 📚 **[tests/README.md](tests/README.md)** - Documentação técnica completa
+- 🔄 **[MIGRATION_TO_SLED.md](MIGRATION_TO_SLED.md)** - Migração completa para Sled
+
+### 🎯 Tipos de Testes Disponíveis
+
+| Tipo | Quantidade | Banco | Tempo | Descrição |
+|------|------------|-------|-------|-----------|
+| **Unitários** | 8 | N/A | ~0.01s | Testes de funções isoladas |
+| **Integração (Sled)** | 17 | Sled em memória | ~0.11s | ⚡ **Testes rápidos sem servidor** |
+| **Carga Leve** | 7 + 4 ignorados | Sled em memória | ~0.08s | Testes de performance ⚡ |
+| **Test Helpers** | 6 | Sled em memória | ~0.06s | Testes do banco Sled |
+| **TOTAL** | **38** | **100% Sled** | **~0.3s** | **Zero poluição MongoDB** ✅ |
+
+### ⚡ Testes Rápidos com Sled (Recomendado para Desenvolvimento)
+
+**Sled** é um banco NoSQL em memória (equivalente ao H2 do Java):
+- ✅ **17x mais rápido** que testes com MongoDB
+- ✅ **Sem dependências** - não precisa de servidor rodando
+- ✅ **Isolamento total** - cada teste tem seu próprio banco
+- ✅ **Automático** - dados são destruídos após o teste
+- ✅ **Zero poluição** - MongoDB de produção nunca é tocado
 
 ```bash
-# All tests
+# Apenas testes com Sled (17 testes - ~0.11s) ⚡
+cargo test --test integration_tests_sled
+
+# Testes de carga Sled (7 testes - ~0.08s)
+cargo test --test load_tests
+
+# Testes de helpers Sled (6 testes - ~0.06s)
+cargo test --test test_helpers
+
+# Todos os testes rápidos (~0.3s total) ⚡
+cargo test
+```
+
+### Compilar Testes (Primeira Vez)
+
+```bash
+# Baixa e compila todas as dependências de teste (inclui Sled)
+cargo build --tests
+```
+
+### Rodar TODOS os Testes
+
+```bash
+# Rodar todos os testes (38 testes - ~0.3s) ⚡
 cargo test
 
-# Tests with detailed output
-cargo test -- --nocapture
+# Resultado esperado:
+# ✅  8 testes unitários         (0.01s)
+# ✅ 17 testes integração (Sled) (0.11s) ⚡
+# ✅  7 testes carga (Sled)      (0.08s) ⚡
+# ✅  6 testes helpers (Sled)    (0.06s) ⚡
+# = 38 testes (100% sucesso, 0% MongoDB) ✅
+```
 
-# Specific tests
-cargo test auth_tests
+### Testes de Carga Pesados (Ignorados por Padrão)
+
+```bash
+# Rodar testes de carga ignorados (moderate, heavy, stress, custom)
+cargo test -- --ignored --nocapture
+cargo test --test integration_tests
+
+# 3. Testes de Carga Leve (100 req - ~7s)
+cargo test --test load_tests load_test_light -- --ignored --nocapture
+
+# Ou executar tudo de uma vez:
+cargo test --test integration_tests && \
+cargo test --test load_tests load_test_light -- --ignored --nocapture
+```
+
+### Testes de Integração
+
+```bash
+# Todos os testes de integração (6 testes)
+cargo test --test integration_tests
+
+# Com output detalhado
+cargo test --test integration_tests -- --nocapture
+
+# Teste específico
+cargo test --test integration_tests test_user_login
+cargo test --test integration_tests test_user_registration
+cargo test --test integration_tests test_protected_route_with_valid_token
+```
+
+**Testes disponíveis:**
+- ✅ `test_health_endpoint` - GET /health
+- ✅ `test_user_registration` - POST /auth/register
+- ✅ `test_user_login` - POST /auth/login
+- ✅ `test_login_with_wrong_password` - Valida senha incorreta
+- ✅ `test_protected_route_without_token` - Acesso sem token
+- ✅ `test_protected_route_with_valid_token` - Acesso com JWT válido
+
+### Testes de Carga
+
+```bash
+# Leve: 100 requisições, 10 paralelas (~7s)
+cargo test --test load_tests load_test_light -- --ignored --nocapture
+
+# Moderado: 500 requisições, 50 paralelas (~30s)
+cargo test --test load_tests load_test_moderate -- --ignored --nocapture
+
+# Pesado: 1000 requisições, 100 paralelas (~60s)
+cargo test --test load_tests load_test_heavy -- --ignored --nocapture
+
+# Stress: 2000 requisições, 200 paralelas (~120s)
+cargo test --test load_tests load_test_stress -- --ignored --nocapture
+
+# Custom: Personalizável
+cargo test --test load_tests load_test_custom -- --ignored --nocapture
+```
+
+### Benchmarks (Opcional)
+
+```bash
+# Executar benchmarks com Criterion
+cargo bench
+
+# Ver relatórios HTML
+open target/criterion/report/index.html
+```
+
+### Resultados Validados
+
+**Testes de Integração:**
+```
+running 6 tests
+test test_health_endpoint ... ok
+test test_user_registration ... ok
+test test_user_login ... ok
+test test_login_with_wrong_password ... ok
+test test_protected_route_without_token ... ok
+test test_protected_route_with_valid_token ... ok
+
+test result: ok. 6 passed; 0 failed
+```
+
+**Teste de Carga Leve:**
+```
+📊 Teste de Carga Leve (100 req, 10 concurrent)
+
+Requisições:
+  Total:          100
+  Bem-sucedidas:  100 ✓
+  Falhas:         0
+  Taxa de sucesso: 100.00%
+
+Performance:
+  Duração total:   4.25s
+  Req/s:           23.55
+
+Latência:
+  Mínima:      305.52ms
+  P50:         327.50ms
+  P95:         828.10ms
+  Máxima:     1193.64ms
 ```
 
 ### Integration Tests
 
 ```bash
 # Test registration endpoint
-curl -X POST http://localhost:8080/register \
+curl -X POST http://localhost:8080/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}'
 
 # Test login endpoint
-curl -X POST http://localhost:8080/login \
+curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}'
 
-# Test profile endpoint (replace the token)
-curl -X GET http://localhost:8080/profile \
+# Test protected endpoint (replace the token)
+curl -X GET http://localhost:8080/auth/protected \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
@@ -437,7 +623,28 @@ curl -X GET http://localhost:8080/profile \
 brew install wrk
 
 # Load test on login endpoint
-wrk -t12 -c400 -d30s -s login_test.lua http://localhost:8080/login
+wrk -t12 -c400 -d30s -s login_test.lua http://localhost:8080/auth/login
+```
+
+### Code Quality
+
+```bash
+# Fix unused imports and other simple warnings
+cargo fix --bin "kong-security-api" --allow-dirty
+
+# Check formatting
+cargo fmt --check
+
+# Run linter
+cargo clippy -- -D warnings
+
+# Current status: 25 warnings (mostly dead_code for future features)
+# These warnings are for implemented but not-yet-used features like:
+# - Refresh token functionality
+# - Rate limiting middleware
+# - Security headers middleware
+# - User role management
+# - Admin endpoints
 ```
 
 ## 🚢 Deployment

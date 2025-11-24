@@ -1,25 +1,14 @@
 use actix_web::{web, HttpRequest, HttpResponse, Result};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use mongodb::Database;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use std::time::SystemTime;
 use mongodb::bson::DateTime;
+use validator::Validate;
 use crate::auth::{create_jwt_token, verify_jwt_token};
 use crate::models::{User, LoginLog};
 use crate::services::{UserService, LogService};
-
-#[derive(Deserialize)]
-pub struct LoginRequest {
-    email: String,
-    password: String,
-}
-
-#[derive(Deserialize)]
-pub struct RegisterRequest {
-    email: String,
-    password: String,
-    name: String,
-}
+use crate::middleware::validation::{LoginRequest, RegisterRequest, format_validation_errors};
 
 #[derive(Serialize)]
 pub struct AuthResponse {
@@ -53,6 +42,15 @@ pub async fn login(
     db: web::Data<Database>,
     login_req: web::Json<LoginRequest>,
 ) -> Result<HttpResponse> {
+    // Validar entrada
+    if let Err(errors) = login_req.0.validate() {
+        let error_message = format_validation_errors(errors);
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Validation failed",
+            "message": error_message
+        })));
+    }
+
     let user_service = UserService::new(db.get_ref().clone());
     let log_service = LogService::new(db.get_ref().clone());
     
@@ -134,6 +132,15 @@ pub async fn register(
     db: web::Data<Database>,
     register_req: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
+    // Validar entrada
+    if let Err(errors) = register_req.0.validate() {
+        let error_message = format_validation_errors(errors);
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Validation failed",
+            "message": error_message
+        })));
+    }
+
     let user_service = UserService::new(db.get_ref().clone());
 
     // Check if user already exists
