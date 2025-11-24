@@ -48,6 +48,7 @@ pub fn verify_jwt_token(req: &HttpRequest) -> Result<User, String> {
 
     let user = User {
         _id: Some(user_id),
+        tenant_id: String::from(""), // TODO: Extract tenant_id from token claims
         email: claims.email,
         password: String::new(), // Don't include password in token verification
         roles: Some(claims.roles),

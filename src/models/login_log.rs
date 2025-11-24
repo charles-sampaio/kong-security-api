@@ -9,6 +9,9 @@ pub struct LoginLog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<ObjectId>,
     
+    // Tenant information
+    pub tenant_id: String,
+    
     // User information
     pub user_id: Option<String>, // Some if login successful, None if failed
     pub email: String,
@@ -43,6 +46,7 @@ pub struct LoginLog {
 
 impl LoginLog {
     pub fn new(
+        tenant_id: String,
         email: String,
         success: bool,
         ip_address: Option<String>,
@@ -56,6 +60,7 @@ impl LoginLog {
         
         Self {
             _id: Some(ObjectId::new()),
+            tenant_id,
             user_id: None,
             email,
             success,

@@ -63,6 +63,37 @@ impl LogService {
         Ok(logs)
     }
 
+    pub async fn get_user_logs_by_tenant(&self, user_id: &str, tenant_id: &str, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
+        let collection = self.logs_collection();
+        let filter = doc! { 
+            "user_id": user_id,
+            "tenant_id": tenant_id 
+        };
+
+        let mut cursor = collection.find(filter).await?;
+        let mut logs = Vec::new();
+        let mut count = 0;
+
+        while let Some(log) = cursor.next().await {
+            match log {
+                Ok(l) => {
+                    logs.push(l);
+                    count += 1;
+                    if let Some(limit_val) = limit {
+                        if count >= limit_val {
+                            break;
+                        }
+                    }
+                }
+                Err(e) => return Err(Box::new(e)),
+            }
+        }
+
+        // Sort by timestamp descending (most recent first)
+        logs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        Ok(logs)
+    }
+
     pub async fn get_all_logs(&self, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         let filter = doc! {};

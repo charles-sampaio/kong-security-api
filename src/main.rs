@@ -15,11 +15,13 @@ use database::connect_to_database;
 use services::{UserService, LogService, PasswordResetService};
 use api::handlers::auth_handlers::*;
 use api::handlers::log_handlers::*;
+use api::handlers::tenant_handlers::configure_tenant_routes;
 use api::handlers::password_reset::{
     request_password_reset,
     validate_reset_token,
     confirm_password_reset,
 };
+use middleware::TenantValidator;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use api_doc::ApiDoc;
@@ -31,6 +33,13 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let db = connect_to_database().await.expect("Failed to connect to database");
+    
+    // Initialize database indexes
+    log::info!("🔧 Initializing database indexes...");
+    if let Err(e) = database::indexes::initialize_indexes(&db).await {
+        log::error!("❌ Failed to initialize indexes: {}", e);
+        panic!("Database indexes initialization failed");
+    }
     
     // Initialize services
     let user_service = web::Data::new(UserService::new(db.clone()));
@@ -71,36 +80,44 @@ async fn main() -> std::io::Result<()> {
             .app_data(reset_service.clone())
             .app_data(web::JsonConfig::default().limit(1024 * 1024)) // 1MB JSON limit
             
-            // Health check endpoint
+            // Health check endpoint (sem validação de tenant)
             .route("/health", web::get().to(health_check))
             
-            // Swagger UI
+            // Swagger UI (sem validação de tenant)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", openapi.clone())
             )
             
-            // API routes - Authentication
+            // Tenant Management routes (sem validação de tenant para gerenciar tenants)
+            .configure(configure_tenant_routes)
+            
+            // API routes with Tenant Validation
             .service(
-                web::scope("/auth")
-                    .route("/login", web::post().to(login))
-                    .route("/register", web::post().to(register))
-                    .route("/protected", web::get().to(protected))
-                    // Password Reset endpoints
-                    .route("/password-reset/request", web::post().to(request_password_reset))
-                    .route("/password-reset/validate", web::post().to(validate_reset_token))
-                    .route("/password-reset/confirm", web::post().to(confirm_password_reset))
-            )
-            // API routes - Logs
-            .service(
-                web::scope("/api/logs")
-                    .route("/my-logins", web::get().to(get_my_logs))
-            )
-            // API routes - Admin
-            .service(
-                web::scope("/api/admin")
-                    .route("/logs", web::get().to(get_all_logs))
-                    .route("/logs/stats", web::get().to(get_login_stats))
+                web::scope("")
+                    .wrap(TenantValidator::new(db.clone()))
+                    // Authentication
+                    .service(
+                        web::scope("/auth")
+                            .route("/login", web::post().to(login))
+                            .route("/register", web::post().to(register))
+                            .route("/protected", web::get().to(protected))
+                            // Password Reset endpoints
+                            .route("/password-reset/request", web::post().to(request_password_reset))
+                            .route("/password-reset/validate", web::post().to(validate_reset_token))
+                            .route("/password-reset/confirm", web::post().to(confirm_password_reset))
+                    )
+                    // Logs
+                    .service(
+                        web::scope("/api/logs")
+                            .route("/my-logins", web::get().to(get_my_logs))
+                    )
+                    // Admin
+                    .service(
+                        web::scope("/api/admin")
+                            .route("/logs", web::get().to(get_all_logs))
+                            .route("/logs/stats", web::get().to(get_login_stats))
+                    )
             )
     })
     .bind(("127.0.0.1", 8080))

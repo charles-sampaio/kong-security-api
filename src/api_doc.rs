@@ -4,8 +4,8 @@ use utoipa::OpenApi;
 #[openapi(
     info(
         title = "Kong Security API",
-        version = "1.0.0",
-        description = "Secure API with JWT authentication, comprehensive logging, and advanced security features",
+        version = "2.0.0",
+        description = "Secure Multi-Tenant API with JWT authentication, comprehensive logging, and advanced security features",
         contact(
             name = "API Support",
             email = "support@kongsecurity.com"
@@ -27,9 +27,14 @@ use utoipa::OpenApi;
         LoginStats,
         ErrorResponse,
         HealthResponse,
+        crate::models::Tenant,
+        crate::models::CreateTenantRequest,
+        crate::models::UpdateTenantRequest,
+        crate::models::TenantResponse,
     )),
     tags(
         (name = "Authentication", description = "User authentication and registration endpoints"),
+        (name = "Tenants", description = "Multi-tenant management endpoints"),
         (name = "Logs", description = "Login audit log endpoints"),
         (name = "Health", description = "API health check endpoints")
     ),

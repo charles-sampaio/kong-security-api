@@ -19,6 +19,7 @@ impl PasswordResetService {
     /// Gera um token de reset de senha
     pub async fn create_reset_token(
         &self,
+        tenant_id: &str,
         email: &str,
         expiration_hours: i64,
         ip_address: Option<String>,
@@ -28,6 +29,7 @@ impl PasswordResetService {
         
         // Criar documento do token
         let reset_token = PasswordResetToken::new(
+            tenant_id.to_string(),
             email.to_string(),
             token.clone(),
             expiration_hours,

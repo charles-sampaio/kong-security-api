@@ -7,6 +7,9 @@ pub struct PasswordResetToken {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     
+    /// Tenant ID
+    pub tenant_id: String,
+    
     /// Email of the user who requested the reset
     pub email: String,
     
@@ -29,12 +32,13 @@ pub struct PasswordResetToken {
 
 impl PasswordResetToken {
     /// Creates a new password reset token
-    pub fn new(email: String, token: String, expiration_hours: i64, ip_address: Option<String>) -> Self {
+    pub fn new(tenant_id: String, email: String, token: String, expiration_hours: i64, ip_address: Option<String>) -> Self {
         let now = chrono::Utc::now();
         let expires_at = now + chrono::Duration::hours(expiration_hours);
         
         Self {
             id: None,
+            tenant_id,
             email,
             token,
             created_at: DateTime::from_millis(now.timestamp_millis()),

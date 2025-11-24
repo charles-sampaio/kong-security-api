@@ -6,6 +6,7 @@ use std::time::SystemTime;
 pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<ObjectId>,
+    pub tenant_id: String,
     pub email: String,
     pub password: String,
 
@@ -34,9 +35,10 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(email: String, password_hash: String) -> Self {
+    pub fn new(tenant_id: String, email: String, password_hash: String) -> Self {
         Self {
             _id: Some(ObjectId::new()),
+            tenant_id,
             email,
             password: password_hash,
             roles: Some(vec!["user".to_string()]),

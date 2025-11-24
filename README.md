@@ -37,12 +37,13 @@ This API was designed to be a centralized authentication service that can be eas
 ## ✨ Features
 
 - **Secure Authentication**: JWT implementation with RS256 algorithm
+- **Multi-Tenancy**: Complete tenant isolation with UUID-based tenant identification
 - **User Management**: User registration, login, and profile
 - **Password Reset**: Complete token-based password recovery flow
-- **Access Control**: Role-based system
+- **Access Control**: Role-based system with tenant-level isolation
 - **Security**: Password hashing with bcrypt (cost 12)
 - **Persistence**: MongoDB integration
-- **Logging**: Comprehensive audit logging with login tracking
+- **Logging**: Comprehensive audit logging with login tracking per tenant
 - **Refresh Tokens**: Secure token renewal
 - **Validation**: Rigorous input data validation with password strength requirements
 - **Performance**: High-performance Actix-web framework
@@ -51,7 +52,7 @@ This API was designed to be a centralized authentication service that can be eas
 - **SQL Injection Prevention**: Input sanitization and validation
 - **XSS Prevention**: HTML/script tag filtering
 - **Testing**: 45+ unit and integration tests (100% using Sled)
-- **XSS Prevention**: HTML/script tag filtering
+- **Tenant Management**: Full CRUD operations for tenant lifecycle
 
 ## 🛠 Technologies
 
@@ -219,7 +220,62 @@ http://localhost:8080
 
 - **Swagger UI**: http://localhost:8080/swagger-ui/
 - **OpenAPI Spec**: http://localhost:8080/api-docs/openapi.json
-- **Postman Collection**: `Kong_Security_API.postman_collection.json`
+- **Postman Collection**: `Kong_Security_API_MultiTenant.postman_collection.json`
+
+---
+
+## 🏢 Multi-Tenancy
+
+Kong Security API supports **complete multi-tenancy** with tenant isolation. Each tenant (organization/system) has completely isolated data.
+
+### Key Features
+
+- ✅ **UUID-based Tenant IDs**: Automatically generated, impossible to duplicate
+- ✅ **Complete Data Isolation**: Users, logs, and tokens are isolated per tenant
+- ✅ **Tenant Validation Middleware**: All protected routes validate tenant existence and status
+- ✅ **Tenant Management API**: Full CRUD operations for tenant lifecycle
+- ✅ **Inactive Tenant Protection**: Deactivated tenants cannot access the API
+
+### Quick Start
+
+```bash
+# 1. Create a tenant (UUID generated automatically)
+curl -X POST http://localhost:8080/api/tenants \
+  -H "Content-Type: application/json" \
+  -d '{"name": "ACME Corp", "description": "Main tenant"}'
+
+# Response includes tenant_id UUID:
+# {"tenant_id": "550e8400-e29b-41d4-a716-446655440000", ...}
+
+# 2. Use tenant_id UUID in all requests
+export TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+
+# 3. Register user with tenant header
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: $TENANT_ID" \
+  -d '{"email": "user@acme.com", "password": "SecurePass123!"}'
+```
+
+### Documentation
+
+- 📖 [Complete Multi-Tenant Guide](./MULTI_TENANT.md)
+- 🚀 [Quick Start Guide](./QUICK_START.md)
+- 📮 [Postman Collection Guide](./POSTMAN_README.md)
+- 📊 [Implementation Summary](./SUMMARY.md)
+- 🗄️ [Database Indexes & Unique Constraints](./DATABASE_INDEXES.md)
+
+### Tenant Management Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/tenants` | Create tenant (UUID auto-generated) |
+| GET | `/api/tenants` | List all tenants |
+| GET | `/api/tenants/{id}` | Get tenant by UUID |
+| PUT | `/api/tenants/{id}` | Update tenant |
+| POST | `/api/tenants/{id}/activate` | Activate tenant |
+| POST | `/api/tenants/{id}/deactivate` | Deactivate tenant |
+| DELETE | `/api/tenants/{id}` | Delete tenant |
 
 ---
 
