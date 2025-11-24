@@ -41,6 +41,7 @@ fn get_user_agent(req: &HttpRequest) -> Option<String> {
 pub async fn login(
     req: HttpRequest,
     db: web::Data<Database>,
+    log_service: web::Data<LogService>,
     login_req: web::Json<LoginRequest>,
 ) -> Result<HttpResponse> {
     // Validar entrada
@@ -64,7 +65,6 @@ pub async fn login(
     };
 
     let user_service = UserService::new(db.get_ref().clone());
-    let log_service = LogService::new(db.get_ref().clone());
     
     let ip_address = get_client_ip(&req);
     let user_agent = get_user_agent(&req);

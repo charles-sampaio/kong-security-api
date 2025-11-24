@@ -1,7 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
 use crate::models::{CreateTenantRequest, UpdateTenantRequest, TenantResponse};
 use crate::services::TenantService;
-use mongodb::Database;
 
 /// Cria um novo tenant
 /// 
@@ -23,11 +22,9 @@ use mongodb::Database;
     )
 )]
 pub async fn create_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_data: web::Json<CreateTenantRequest>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.create_tenant(tenant_data.into_inner()).await {
         Ok(tenant) => {
             let response: TenantResponse = tenant.into();
@@ -59,7 +56,7 @@ pub async fn create_tenant(
     )
 )]
 pub async fn list_tenants(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     query: web::Query<std::collections::HashMap<String, String>>,
 ) -> impl Responder {
     let active_only = query
@@ -67,15 +64,16 @@ pub async fn list_tenants(
         .and_then(|v| v.parse::<bool>().ok())
         .unwrap_or(false);
 
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.list_tenants(active_only).await {
-        Ok(tenants) => {
+        Ok((tenants, from_cache)) => {
             let responses: Vec<TenantResponse> = tenants
                 .into_iter()
                 .map(|t| t.into())
                 .collect();
-            HttpResponse::Ok().json(responses)
+            HttpResponse::Ok().json(serde_json::json!({
+                "data": responses,
+                "from_cache": from_cache
+            }))
         }
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to list tenants",
@@ -98,17 +96,18 @@ pub async fn list_tenants(
     )
 )]
 pub async fn get_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_id: web::Path<String>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.get_tenant(&tenant_id).await {
-        Ok(Some(tenant)) => {
+        Ok((Some(tenant), from_cache)) => {
             let response: TenantResponse = tenant.into();
-            HttpResponse::Ok().json(response)
+            HttpResponse::Ok().json(serde_json::json!({
+                "data": response,
+                "from_cache": from_cache
+            }))
         }
-        Ok(None) => HttpResponse::NotFound().json(serde_json::json!({
+        Ok((None, _)) => HttpResponse::NotFound().json(serde_json::json!({
             "error": "Tenant not found",
             "message": format!("Tenant with ID '{}' does not exist", tenant_id)
         })),
@@ -144,12 +143,10 @@ pub async fn get_tenant(
     )
 )]
 pub async fn update_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_id: web::Path<String>,
     update_data: web::Json<UpdateTenantRequest>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service
         .update_tenant(&tenant_id, update_data.into_inner())
         .await
@@ -188,11 +185,9 @@ pub async fn update_tenant(
     )
 )]
 pub async fn deactivate_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_id: web::Path<String>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.deactivate_tenant(&tenant_id).await {
         Ok(_) => HttpResponse::Ok().json(serde_json::json!({
             "message": "Tenant deactivated successfully"
@@ -227,11 +222,9 @@ pub async fn deactivate_tenant(
     )
 )]
 pub async fn activate_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_id: web::Path<String>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.activate_tenant(&tenant_id).await {
         Ok(_) => HttpResponse::Ok().json(serde_json::json!({
             "message": "Tenant activated successfully"
@@ -266,11 +259,9 @@ pub async fn activate_tenant(
     )
 )]
 pub async fn delete_tenant(
-    db: web::Data<Database>,
+    tenant_service: web::Data<TenantService>,
     tenant_id: web::Path<String>,
 ) -> impl Responder {
-    let tenant_service = TenantService::new(&db);
-
     match tenant_service.delete_tenant(&tenant_id).await {
         Ok(_) => HttpResponse::Ok().json(serde_json::json!({
             "message": "Tenant deleted permanently"

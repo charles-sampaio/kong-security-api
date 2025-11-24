@@ -32,6 +32,10 @@ uuid = { version = "1", features = ["v4", "serde"] }
 mongodb = "3.3.0"
 futures-util = "0.3.31"
 
+# Cache
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+deadpool-redis = "0.14"
+
 # Async Runtime
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 
@@ -55,6 +59,6 @@ chrono = "0.4"
 sled = "0.34"
 bincode = "1.3"  # For serialization with Sled
 
-[[bench]]
-name = "login_benchmark"
-harness = false
+# [[bench]]
+# name = "login_benchmark"
+# harness = false

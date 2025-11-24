@@ -1,8 +1,8 @@
 use actix_web::{web, HttpRequest, HttpResponse, Result};
-use mongodb::Database;
 use serde::Deserialize;
 use crate::auth::verify_jwt_token;
 use crate::services::LogService;
+use crate::middleware::tenant_validator::get_tenant_id;
 
 #[derive(Deserialize)]
 pub struct LogsQuery {
@@ -11,7 +11,7 @@ pub struct LogsQuery {
 
 pub async fn get_my_logs(
     req: HttpRequest,
-    db: web::Data<Database>,
+    log_service: web::Data<LogService>,
     query: web::Query<LogsQuery>,
 ) -> Result<HttpResponse> {
     // Verify JWT token
@@ -19,12 +19,31 @@ pub async fn get_my_logs(
         Ok(user) => user,
         Err(_) => return Ok(HttpResponse::Unauthorized().json("Invalid token")),
     };
-
-    let log_service = LogService::new(db.get_ref().clone());
     
-    // Get logs for the current user
-    match log_service.get_user_logs(&user._id.unwrap().to_hex(), query.limit).await {
-        Ok(logs) => Ok(HttpResponse::Ok().json(logs)),
+    // Get tenant_id from request extensions
+    let tenant_id = match get_tenant_id(&req) {
+        Some(id) => id,
+        None => {
+            // Fallback to method without cache if no tenant_id
+            match log_service.get_user_logs(&user._id.unwrap().to_hex(), query.limit).await {
+                Ok(logs) => return Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "data": logs,
+                    "from_cache": false
+                }))),
+                Err(e) => {
+                    eprintln!("Error fetching user logs: {}", e);
+                    return Ok(HttpResponse::InternalServerError().json("Failed to fetch logs"));
+                }
+            }
+        }
+    };
+    
+    // Get logs for the current user with cache support
+    match log_service.get_user_logs_by_tenant(&user._id.unwrap().to_hex(), &tenant_id, query.limit).await {
+        Ok((logs, from_cache)) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "data": logs,
+            "from_cache": from_cache
+        }))),
         Err(e) => {
             eprintln!("Error fetching user logs: {}", e);
             Ok(HttpResponse::InternalServerError().json("Failed to fetch logs"))
@@ -34,7 +53,7 @@ pub async fn get_my_logs(
 
 pub async fn get_all_logs(
     req: HttpRequest,
-    db: web::Data<Database>,
+    log_service: web::Data<LogService>,
     query: web::Query<LogsQuery>,
 ) -> Result<HttpResponse> {
     // Verify JWT token and check admin role
@@ -46,8 +65,6 @@ pub async fn get_all_logs(
     if !user.is_admin() {
         return Ok(HttpResponse::Forbidden().json("Admin access required"));
     }
-
-    let log_service = LogService::new(db.get_ref().clone());
     
     match log_service.get_all_logs(query.limit).await {
         Ok(logs) => Ok(HttpResponse::Ok().json(logs)),
@@ -60,7 +77,7 @@ pub async fn get_all_logs(
 
 pub async fn get_login_stats(
     req: HttpRequest,
-    db: web::Data<Database>,
+    log_service: web::Data<LogService>,
 ) -> Result<HttpResponse> {
     // Verify JWT token and check admin role
     let user = match verify_jwt_token(&req) {
@@ -71,8 +88,6 @@ pub async fn get_login_stats(
     if !user.is_admin() {
         return Ok(HttpResponse::Forbidden().json("Admin access required"));
     }
-
-    let log_service = LogService::new(db.get_ref().clone());
     
     // Get stats for last 30 days by default
     match log_service.get_login_stats(30).await {

@@ -91,17 +91,17 @@ where
                 }
             };
 
-            // Valida se o tenant existe e está ativo
-            let tenant_service = TenantService::new(&db);
+            // Valida se o tenant existe e está ativo (sem cache no middleware)
+            let tenant_service = TenantService::new(&db, None);
             match tenant_service.validate_tenant(&tenant_id).await {
-                Ok(true) => {
+                Ok((true, _)) => {
                     // Adiciona tenant_id às extensões da requisição para uso posterior
                     req.extensions_mut().insert(tenant_id.clone());
                     
                     let res = service.call(req).await?;
                     Ok(res)
                 }
-                Ok(false) => {
+                Ok((false, _)) => {
                     Err(ErrorUnauthorized(serde_json::json!({
                         "error": "Tenant validation failed",
                         "message": "Tenant is inactive"
