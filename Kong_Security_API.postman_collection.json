@@ -1,0 +1,321 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Kong Security API",
+		"description": "Collection completa da Kong Security API com autenticação JWT e recuperação de senha",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registra um novo usuário no sistema"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"jwt_token\", jsonData.token);",
+									"    console.log(\"Token JWT salvo: \" + jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Faz login e retorna um token JWT (salvo automaticamente)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Retorna informações do usuário autenticado (requer token JWT)"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints de autenticação e gerenciamento de usuários"
+		},
+		{
+			"name": "Password Reset",
+			"item": [
+				{
+					"name": "1. Request Password Reset",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extrair token do response (agora em campo 'token')",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Em modo DEV, o campo 'token' existe no response",
+									"    if (jsonData.token) {",
+									"        pm.environment.set(\"reset_token\", jsonData.token);",
+									"        console.log(\"Token de reset salvo: \" + jsonData.token);",
+									"    } else {",
+									"        console.log(\"Token não retornado (modo produção - enviado por email)\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/password-reset/request",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"password-reset",
+								"request"
+							]
+						},
+						"description": "Solicita reset de senha. Gera um token único e envia por email.\n\n**Em modo DEV:** O token é retornado no response e salvo automaticamente.\n\n**Em produção:** O token é enviado apenas por email."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Validate Reset Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{reset_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/password-reset/validate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"password-reset",
+								"validate"
+							]
+						},
+						"description": "Valida se o token de reset é válido, não expirou e não foi usado.\n\n**Opcional:** Frontend pode usar este endpoint para validar antes de mostrar formulário de nova senha.\n\n**Usa:** Token salvo automaticamente do request anterior."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Confirm Password Reset",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewSecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/password-reset/confirm",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"password-reset",
+								"confirm"
+							]
+						},
+						"description": "Confirma o reset de senha com o token válido.\n\n**Ações:**\n- Valida o token\n- Atualiza a senha do usuário (hash bcrypt)\n- Marca o token como usado\n- Invalida todos os outros tokens do mesmo email\n\n**Validações:**\n- Senha deve ter no mínimo 8 caracteres\n- Token deve ser válido, não expirado e não usado"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Test - Try Reuse Token (Should Fail)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"AnotherPassword456!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/password-reset/confirm",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"password-reset",
+								"confirm"
+							]
+						},
+						"description": "**Teste de segurança:** Tenta reusar um token já usado.\n\n**Esperado:** Erro 400 - \"Token inválido ou expirado\"\n\nDemonstra que tokens são de uso único."
+					},
+					"response": []
+				}
+			],
+			"description": "Fluxo completo de recuperação de senha com tokens de uso único"
+		},
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "API Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Verifica se a API está online"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reset_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

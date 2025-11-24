@@ -38,6 +38,7 @@ This API was designed to be a centralized authentication service that can be eas
 
 - **Secure Authentication**: JWT implementation with RS256 algorithm
 - **User Management**: User registration, login, and profile
+- **Password Reset**: Complete token-based password recovery flow
 - **Access Control**: Role-based system
 - **Security**: Password hashing with bcrypt (cost 12)
 - **Persistence**: MongoDB integration
@@ -48,6 +49,8 @@ This API was designed to be a centralized authentication service that can be eas
 - **API Documentation**: Interactive Swagger/OpenAPI documentation
 - **CORS Protection**: Configurable cross-origin resource sharing
 - **SQL Injection Prevention**: Input sanitization and validation
+- **XSS Prevention**: HTML/script tag filtering
+- **Testing**: 45+ unit and integration tests (100% using Sled)
 - **XSS Prevention**: HTML/script tag filtering
 
 ## 🛠 Technologies
@@ -204,6 +207,9 @@ http://localhost:8080
 | GET | `/health` | ❌ No | Health check and security features |
 | POST | `/auth/register` | ❌ No | Register new user |
 | POST | `/auth/login` | ❌ No | Login and get JWT token |
+| POST | `/auth/password-reset/request` | ❌ No | Request password reset token |
+| POST | `/auth/password-reset/validate` | ❌ No | Validate reset token (optional) |
+| POST | `/auth/password-reset/confirm` | ❌ No | Confirm password reset |
 | GET | `/auth/protected` | ✅ Yes | Protected resource (example) |
 | GET | `/api/logs/my-logins` | ✅ Yes | Get user's login history |
 | GET | `/api/admin/logs` | ✅ Yes (Admin) | Get all system logs |
@@ -287,7 +293,134 @@ curl -X POST http://localhost:8080/auth/login \
   }'
 ```
 
-### 3. User Profile
+### 3. Password Reset Flow
+
+The system provides a complete password recovery flow with unique tokens.
+
+#### 3.1. Request Password Reset
+
+**POST** `/auth/password-reset/request`
+
+Generates a reset token and sends it to the user (currently returns in response for development).
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password reset token sent to user@example.com",
+  "token": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Note**: The `token` field only appears in development mode. In production (release), the token is sent only via email.
+
+**Features:**
+- ✅ Unique UUID token
+- ✅ 1-hour expiration
+- ✅ Doesn't reveal if email exists (security)
+- ✅ IP address tracking for audit
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/auth/password-reset/request \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+```
+
+#### 3.2. Validate Reset Token (Optional)
+
+**POST** `/auth/password-reset/validate`
+
+Validates if a token is still valid before showing the password reset form.
+
+**Request Body:**
+```json
+{
+  "token": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "email": "user@example.com",
+  "expires_at": "2025-11-23T23:00:00Z"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/auth/password-reset/validate \
+  -H "Content-Type: application/json" \
+  -d '{"token":"550e8400-e29b-41d4-a716-446655440000"}'
+```
+
+#### 3.3. Confirm Password Reset
+
+**POST** `/auth/password-reset/confirm`
+
+Resets the password using the token.
+
+**Request Body:**
+```json
+{
+  "token": "550e8400-e29b-41d4-a716-446655440000",
+  "new_password": "NewSecurePass123!"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password updated successfully"
+}
+```
+
+**Validations:**
+- ✅ Token must be valid, not expired, not used
+- ✅ Password must be at least 8 characters
+- ✅ Token is marked as used after success
+- ✅ All other tokens for this email are invalidated
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/auth/password-reset/confirm \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token":"550e8400-e29b-41d4-a716-446655440000",
+    "new_password":"NewSecurePass123!"
+  }'
+```
+
+**Security Features:**
+- 🔒 Unique tokens (UUID v4 - impossible to guess)
+- ⏱️ Time-limited (1 hour expiration)
+- 🎯 Single use (token marked as used after reset)
+- 🔐 Bcrypt hashing (cost 12)
+- 🚫 Automatic invalidation of all other tokens
+- 📝 IP address logging for audit
+
+**Full Flow:**
+```
+1. User requests reset → Token generated
+2. (Optional) Validate token → Check if still valid
+3. User sets new password → Password updated
+4. Token marked as used → Cannot be reused
+5. All other tokens invalidated → Extra security
+```
+
+📚 **See full documentation**: [`PASSWORD_RESET_FLOW.md`](PASSWORD_RESET_FLOW.md)
+
+### 4. User Profile
 
 **GET** `/auth/protected`
 
@@ -430,141 +563,141 @@ kong-security-api/
 
 ## 🧪 Testing
 
-### 🦀 Sistema de Testes em Rust
+### 🦀 Rust Testing System
 
-Todo o sistema de testes foi desenvolvido 100% em Rust nativo com **Sled** (banco em memória).
+The entire testing system was developed 100% in native Rust with **Sled** (in-memory database).
 
-**Documentação:**
-- 🚀 **[SLED_TESTING.md](SLED_TESTING.md)** - **Banco em memória para testes (equivalente ao H2)**
-- 📘 **[QUICK_START.md](QUICK_START.md)** - Início rápido
-- 📊 **[VALIDATION_RESULTS.md](VALIDATION_RESULTS.md)** - Resultados validados
-- 📚 **[tests/README.md](tests/README.md)** - Documentação técnica completa
-- 🔄 **[MIGRATION_TO_SLED.md](MIGRATION_TO_SLED.md)** - Migração completa para Sled
+**Documentation:**
+- 🚀 **[SLED_TESTING.md](SLED_TESTING.md)** - **In-memory database for tests (equivalent to H2)**
+- 📘 **[QUICK_START.md](QUICK_START.md)** - Quick start guide
+- 📊 **[VALIDATION_RESULTS.md](VALIDATION_RESULTS.md)** - Validated results
+- 📚 **[tests/README.md](tests/README.md)** - Complete technical documentation
+- 🔄 **[MIGRATION_TO_SLED.md](MIGRATION_TO_SLED.md)** - Complete migration to Sled
 
-### 🎯 Tipos de Testes Disponíveis
+### 🎯 Available Test Types
 
-| Tipo | Quantidade | Banco | Tempo | Descrição |
-|------|------------|-------|-------|-----------|
-| **Unitários** | 8 | N/A | ~0.01s | Testes de funções isoladas |
-| **Integração (Sled)** | 17 | Sled em memória | ~0.11s | ⚡ **Testes rápidos sem servidor** |
-| **Carga Leve** | 7 + 4 ignorados | Sled em memória | ~0.08s | Testes de performance ⚡ |
-| **Test Helpers** | 6 | Sled em memória | ~0.06s | Testes do banco Sled |
-| **TOTAL** | **38** | **100% Sled** | **~0.3s** | **Zero poluição MongoDB** ✅ |
+| Type | Quantity | Database | Time | Description |
+|------|----------|----------|------|-------------|
+| **Unit** | 8 | N/A | ~0.01s | Isolated function tests |
+| **Integration (Sled)** | 17 | Sled in-memory | ~0.11s | ⚡ **Fast tests without server** |
+| **Light Load** | 7 + 4 ignored | Sled in-memory | ~0.08s | Performance tests ⚡ |
+| **Test Helpers** | 6 | Sled in-memory | ~0.06s | Sled database tests |
+| **TOTAL** | **38** | **100% Sled** | **~0.3s** | **Zero MongoDB pollution** ✅ |
 
-### ⚡ Testes Rápidos com Sled (Recomendado para Desenvolvimento)
+### ⚡ Fast Tests with Sled (Recommended for Development)
 
-**Sled** é um banco NoSQL em memória (equivalente ao H2 do Java):
-- ✅ **17x mais rápido** que testes com MongoDB
-- ✅ **Sem dependências** - não precisa de servidor rodando
-- ✅ **Isolamento total** - cada teste tem seu próprio banco
-- ✅ **Automático** - dados são destruídos após o teste
-- ✅ **Zero poluição** - MongoDB de produção nunca é tocado
+**Sled** is an in-memory NoSQL database (equivalent to Java's H2):
+- ✅ **17x faster** than tests with MongoDB
+- ✅ **No dependencies** - no need for running server
+- ✅ **Total isolation** - each test has its own database
+- ✅ **Automatic** - data is destroyed after test
+- ✅ **Zero pollution** - production MongoDB is never touched
 
 ```bash
-# Apenas testes com Sled (17 testes - ~0.11s) ⚡
+# Only Sled tests (17 tests - ~0.11s) ⚡
 cargo test --test integration_tests_sled
 
-# Testes de carga Sled (7 testes - ~0.08s)
+# Sled load tests (7 tests - ~0.08s)
 cargo test --test load_tests
 
-# Testes de helpers Sled (6 testes - ~0.06s)
+# Sled helpers tests (6 tests - ~0.06s)
 cargo test --test test_helpers
 
-# Todos os testes rápidos (~0.3s total) ⚡
+# All fast tests (~0.3s total) ⚡
 cargo test
 ```
 
-### Compilar Testes (Primeira Vez)
+### Compile Tests (First Time)
 
 ```bash
-# Baixa e compila todas as dependências de teste (inclui Sled)
+# Download and compile all test dependencies (includes Sled)
 cargo build --tests
 ```
 
-### Rodar TODOS os Testes
+### Run ALL Tests
 
 ```bash
-# Rodar todos os testes (38 testes - ~0.3s) ⚡
+# Run all tests (38 tests - ~0.3s) ⚡
 cargo test
 
-# Resultado esperado:
-# ✅  8 testes unitários         (0.01s)
-# ✅ 17 testes integração (Sled) (0.11s) ⚡
-# ✅  7 testes carga (Sled)      (0.08s) ⚡
-# ✅  6 testes helpers (Sled)    (0.06s) ⚡
-# = 38 testes (100% sucesso, 0% MongoDB) ✅
+# Expected result:
+# ✅  8 unit tests              (0.01s)
+# ✅ 17 integration tests (Sled) (0.11s) ⚡
+# ✅  7 load tests (Sled)        (0.08s) ⚡
+# ✅  6 helpers tests (Sled)     (0.06s) ⚡
+# = 38 tests (100% success, 0% MongoDB) ✅
 ```
 
-### Testes de Carga Pesados (Ignorados por Padrão)
+### Heavy Load Tests (Ignored by Default)
 
 ```bash
-# Rodar testes de carga ignorados (moderate, heavy, stress, custom)
+# Run ignored load tests (moderate, heavy, stress, custom)
 cargo test -- --ignored --nocapture
 cargo test --test integration_tests
 
-# 3. Testes de Carga Leve (100 req - ~7s)
+# 3. Light Load Test (100 req - ~7s)
 cargo test --test load_tests load_test_light -- --ignored --nocapture
 
-# Ou executar tudo de uma vez:
+# Or run everything at once:
 cargo test --test integration_tests && \
 cargo test --test load_tests load_test_light -- --ignored --nocapture
 ```
 
-### Testes de Integração
+### Integration Tests
 
 ```bash
-# Todos os testes de integração (6 testes)
+# All integration tests (6 tests)
 cargo test --test integration_tests
 
-# Com output detalhado
+# With detailed output
 cargo test --test integration_tests -- --nocapture
 
-# Teste específico
+# Specific test
 cargo test --test integration_tests test_user_login
 cargo test --test integration_tests test_user_registration
 cargo test --test integration_tests test_protected_route_with_valid_token
 ```
 
-**Testes disponíveis:**
+**Available tests:**
 - ✅ `test_health_endpoint` - GET /health
 - ✅ `test_user_registration` - POST /auth/register
 - ✅ `test_user_login` - POST /auth/login
-- ✅ `test_login_with_wrong_password` - Valida senha incorreta
-- ✅ `test_protected_route_without_token` - Acesso sem token
-- ✅ `test_protected_route_with_valid_token` - Acesso com JWT válido
+- ✅ `test_login_with_wrong_password` - Validates incorrect password
+- ✅ `test_protected_route_without_token` - Access without token
+- ✅ `test_protected_route_with_valid_token` - Access with valid JWT
 
-### Testes de Carga
+### Load Tests
 
 ```bash
-# Leve: 100 requisições, 10 paralelas (~7s)
+# Light: 100 requests, 10 parallel (~7s)
 cargo test --test load_tests load_test_light -- --ignored --nocapture
 
-# Moderado: 500 requisições, 50 paralelas (~30s)
+# Moderate: 500 requests, 50 parallel (~30s)
 cargo test --test load_tests load_test_moderate -- --ignored --nocapture
 
-# Pesado: 1000 requisições, 100 paralelas (~60s)
+# Heavy: 1000 requests, 100 parallel (~60s)
 cargo test --test load_tests load_test_heavy -- --ignored --nocapture
 
-# Stress: 2000 requisições, 200 paralelas (~120s)
+# Stress: 2000 requests, 200 parallel (~120s)
 cargo test --test load_tests load_test_stress -- --ignored --nocapture
 
-# Custom: Personalizável
+# Custom: Customizable
 cargo test --test load_tests load_test_custom -- --ignored --nocapture
 ```
 
-### Benchmarks (Opcional)
+### Benchmarks (Optional)
 
 ```bash
-# Executar benchmarks com Criterion
+# Run benchmarks with Criterion
 cargo bench
 
-# Ver relatórios HTML
+# View HTML reports
 open target/criterion/report/index.html
 ```
 
-### Resultados Validados
+### Validated Results
 
-**Testes de Integração:**
+**Integration Tests:**
 ```
 running 6 tests
 test test_health_endpoint ... ok
@@ -577,25 +710,25 @@ test test_protected_route_with_valid_token ... ok
 test result: ok. 6 passed; 0 failed
 ```
 
-**Teste de Carga Leve:**
+**Light Load Test:**
 ```
-📊 Teste de Carga Leve (100 req, 10 concurrent)
+📊 Light Load Test (100 req, 10 concurrent)
 
-Requisições:
+Requests:
   Total:          100
-  Bem-sucedidas:  100 ✓
-  Falhas:         0
-  Taxa de sucesso: 100.00%
+  Successful:     100 ✓
+  Failed:         0
+  Success rate:   100.00%
 
 Performance:
-  Duração total:   4.25s
+  Total duration:  4.25s
   Req/s:           23.55
 
-Latência:
-  Mínima:      305.52ms
+Latency:
+  Minimum:     305.52ms
   P50:         327.50ms
   P95:         828.10ms
-  Máxima:     1193.64ms
+  Maximum:     1193.64ms
 ```
 
 ### Integration Tests

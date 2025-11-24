@@ -12,8 +12,14 @@ use actix_web::{App, HttpServer, middleware::Logger, web, HttpResponse, http::he
 use actix_cors::Cors;
 use dotenv::dotenv;
 use database::connect_to_database;
+use services::{UserService, LogService, PasswordResetService};
 use api::handlers::auth_handlers::*;
 use api::handlers::log_handlers::*;
+use api::handlers::password_reset::{
+    request_password_reset,
+    validate_reset_token,
+    confirm_password_reset,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use api_doc::ApiDoc;
@@ -25,6 +31,11 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let db = connect_to_database().await.expect("Failed to connect to database");
+    
+    // Initialize services
+    let user_service = web::Data::new(UserService::new(db.clone()));
+    let log_service = web::Data::new(LogService::new(db.clone()));
+    let reset_service = web::Data::new(PasswordResetService::new(&db));
     
     log::info!("✅ Database connected successfully");
     
@@ -55,6 +66,9 @@ async fn main() -> std::io::Result<()> {
             
             // Application data
             .app_data(web::Data::new(db.clone()))
+            .app_data(user_service.clone())
+            .app_data(log_service.clone())
+            .app_data(reset_service.clone())
             .app_data(web::JsonConfig::default().limit(1024 * 1024)) // 1MB JSON limit
             
             // Health check endpoint
@@ -72,6 +86,10 @@ async fn main() -> std::io::Result<()> {
                     .route("/login", web::post().to(login))
                     .route("/register", web::post().to(register))
                     .route("/protected", web::get().to(protected))
+                    // Password Reset endpoints
+                    .route("/password-reset/request", web::post().to(request_password_reset))
+                    .route("/password-reset/validate", web::post().to(validate_reset_token))
+                    .route("/password-reset/confirm", web::post().to(confirm_password_reset))
             )
             // API routes - Logs
             .service(

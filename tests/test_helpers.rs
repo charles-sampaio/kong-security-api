@@ -14,6 +14,31 @@ pub struct TestUser {
     pub created_at: i64,
 }
 
+/// Estrutura do token de reset de senha para testes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestPasswordResetToken {
+    pub email: String,
+    pub token: String,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub used: bool,
+    pub ip_address: Option<String>,
+}
+
+impl TestPasswordResetToken {
+    /// Verifica se o token é válido (não expirado e não usado)
+    pub fn is_valid(&self) -> bool {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        
+        !self.used && self.expires_at > now
+    }
+}
+
 /// Banco de dados Sled em memória para testes
 pub struct TestDatabase {
     db: Arc<Db>,
@@ -102,6 +127,217 @@ impl TestDatabase {
         }
         
         Ok(users)
+    }
+
+    // ========================================================================
+    // PASSWORD RESET FUNCTIONS
+    // ========================================================================
+
+    /// Cria um token de reset de senha
+    pub fn create_password_reset_token(&self, email: &str, ip_address: Option<String>) -> String {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        
+        let token = uuid::Uuid::new_v4().to_string();
+        let expires_at = now + 3600; // 1 hora
+        
+        let reset_token = TestPasswordResetToken {
+            email: email.to_string(),
+            token: token.clone(),
+            created_at: now,
+            expires_at,
+            used: false,
+            ip_address,
+        };
+        
+        let key = format!("reset_token:{}", token);
+        let value = bincode::serialize(&reset_token).unwrap();
+        self.db.insert(key.as_bytes(), value).unwrap();
+        
+        token
+    }
+
+    /// Cria um token expirado (para testes)
+    pub fn create_expired_password_reset_token(&self, email: &str) -> String {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        
+        let token = uuid::Uuid::new_v4().to_string();
+        let expires_at = now - 3600; // Expirado (1 hora atrás)
+        
+        let reset_token = TestPasswordResetToken {
+            email: email.to_string(),
+            token: token.clone(),
+            created_at: now - 7200, // Criado 2 horas atrás
+            expires_at,
+            used: false,
+            ip_address: None,
+        };
+        
+        let key = format!("reset_token:{}", token);
+        let value = bincode::serialize(&reset_token).unwrap();
+        self.db.insert(key.as_bytes(), value).unwrap();
+        
+        token
+    }
+
+    /// Valida um token de reset
+    pub fn validate_password_reset_token(&self, token: &str) -> Result<TestPasswordResetToken, String> {
+        let key = format!("reset_token:{}", token);
+        
+        match self.db.get(key.as_bytes()) {
+            Ok(Some(bytes)) => {
+                let reset_token: TestPasswordResetToken = bincode::deserialize(&bytes)
+                    .map_err(|e| format!("Deserialization error: {}", e))?;
+                
+                if reset_token.is_valid() {
+                    Ok(reset_token)
+                } else {
+                    Err("Invalid or expired token".to_string())
+                }
+            }
+            Ok(None) => Err("Token not found".to_string()),
+            Err(e) => Err(format!("Database error: {}", e)),
+        }
+    }
+
+    /// Marca um token como usado
+    pub fn mark_token_as_used(&self, token: &str) -> Result<(), String> {
+        let key = format!("reset_token:{}", token);
+        
+        match self.db.get(key.as_bytes()) {
+            Ok(Some(bytes)) => {
+                let mut reset_token: TestPasswordResetToken = bincode::deserialize(&bytes)
+                    .map_err(|e| format!("Deserialization error: {}", e))?;
+                
+                reset_token.used = true;
+                
+                let value = bincode::serialize(&reset_token)
+                    .map_err(|e| format!("Serialization error: {}", e))?;
+                
+                self.db
+                    .insert(key.as_bytes(), value)
+                    .map_err(|e| format!("Insert error: {}", e))?;
+                
+                Ok(())
+            }
+            Ok(None) => Err("Token not found".to_string()),
+            Err(e) => Err(format!("Database error: {}", e)),
+        }
+    }
+
+    /// Atualiza a senha de um usuário
+    pub fn update_user_password(&self, email: &str, new_password_hash: &str) -> Result<(), String> {
+        let key = format!("user:{}", email);
+        
+        match self.db.get(key.as_bytes()) {
+            Ok(Some(bytes)) => {
+                let mut user: TestUser = bincode::deserialize(&bytes)
+                    .map_err(|e| format!("Deserialization error: {}", e))?;
+                
+                user.password = new_password_hash.to_string();
+                
+                let value = bincode::serialize(&user)
+                    .map_err(|e| format!("Serialization error: {}", e))?;
+                
+                self.db
+                    .insert(key.as_bytes(), value)
+                    .map_err(|e| format!("Insert error: {}", e))?;
+                
+                Ok(())
+            }
+            Ok(None) => Err("User not found".to_string()),
+            Err(e) => Err(format!("Database error: {}", e)),
+        }
+    }
+
+    /// Invalida todos os tokens de um email
+    pub fn invalidate_all_tokens_for_email(&self, email: &str) -> Result<(), String> {
+        let tokens = self.get_tokens_by_email(email)?;
+        
+        for token in tokens {
+            self.mark_token_as_used(&token.token)?;
+        }
+        
+        Ok(())
+    }
+
+    /// Busca todos os tokens de um email
+    pub fn get_tokens_by_email(&self, email: &str) -> Result<Vec<TestPasswordResetToken>, String> {
+        let mut tokens = Vec::new();
+        
+        for item in self.db.scan_prefix(b"reset_token:") {
+            match item {
+                Ok((_, value)) => {
+                    let token: TestPasswordResetToken = bincode::deserialize(&value)
+                        .map_err(|e| format!("Deserialization error: {}", e))?;
+                    
+                    if token.email == email {
+                        tokens.push(token);
+                    }
+                }
+                Err(e) => return Err(format!("Scan error: {}", e)),
+            }
+        }
+        
+        Ok(tokens)
+    }
+
+    /// Busca um token pelo valor (para testes)
+    pub fn get_token_by_value(&self, token_value: &str) -> Result<TestPasswordResetToken, String> {
+        let key = format!("reset_token:{}", token_value);
+        
+        match self.db.get(key.as_bytes()) {
+            Ok(Some(bytes)) => {
+                let token: TestPasswordResetToken = bincode::deserialize(&bytes)
+                    .map_err(|e| format!("Deserialization error: {}", e))?;
+                Ok(token)
+            }
+            Ok(None) => Err("Token not found".to_string()),
+            Err(e) => Err(format!("Database error: {}", e)),
+        }
+    }
+
+    /// Limpa tokens expirados
+    pub fn cleanup_expired_tokens(&self) -> Result<(), String> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        
+        let mut keys_to_remove = Vec::new();
+        
+        for item in self.db.scan_prefix(b"reset_token:") {
+            match item {
+                Ok((key, value)) => {
+                    let token: TestPasswordResetToken = bincode::deserialize(&value)
+                        .map_err(|e| format!("Deserialization error: {}", e))?;
+                    
+                    if token.expires_at < now {
+                        keys_to_remove.push(key);
+                    }
+                }
+                Err(e) => return Err(format!("Scan error: {}", e)),
+            }
+        }
+        
+        for key in keys_to_remove {
+            self.db
+                .remove(&key)
+                .map_err(|e| format!("Remove error: {}", e))?;
+        }
+        
+        Ok(())
     }
 }
 
