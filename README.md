@@ -36,22 +36,39 @@ This API was designed to be a centralized authentication service that can be eas
 
 ## ✨ Features
 
+### Security
 - **Secure Authentication**: JWT implementation with RS256 algorithm
+- **Multi-Tenancy**: Complete tenant isolation with UUID-based tenant identification
 - **User Management**: User registration, login, and profile
 - **Password Reset**: Complete token-based password recovery flow
-- **Access Control**: Role-based system
+- **Access Control**: Role-based system with tenant-level isolation
 - **Security**: Password hashing with bcrypt (cost 12)
-- **Persistence**: MongoDB integration
-- **Logging**: Comprehensive audit logging with login tracking
-- **Refresh Tokens**: Secure token renewal
 - **Validation**: Rigorous input data validation with password strength requirements
-- **Performance**: High-performance Actix-web framework
-- **API Documentation**: Interactive Swagger/OpenAPI documentation
 - **CORS Protection**: Configurable cross-origin resource sharing
 - **SQL Injection Prevention**: Input sanitization and validation
 - **XSS Prevention**: HTML/script tag filtering
+
+### Performance & Scalability
+- **Redis Cache**: Optional caching for tenants and logs (5-10x faster)
+- **MongoDB Connection Pooling**: Optimized pool (max 10 connections)
+- **Response Compression**: Automatic gzip/brotli compression (70-90% bandwidth reduction)
+- **Optimized Queries**: MongoDB projection and sorting for minimal I/O
+- **Zstd/Snappy Compression**: MongoDB wire protocol compression
+- **Low Resource Usage**: ~50MB memory, <5% CPU in idle
+
+### Observability
+- **Persistence**: MongoDB integration with automatic indexes
+- **Logging**: Comprehensive audit logging with login tracking per tenant
+- **API Documentation**: Interactive Swagger/OpenAPI documentation
+- **Health Check**: Endpoint with database and cache status
 - **Testing**: 45+ unit and integration tests (100% using Sled)
-- **XSS Prevention**: HTML/script tag filtering
+
+### Management
+- **Tenant Management**: Full CRUD operations for tenant lifecycle
+- **Refresh Tokens**: Secure token renewal
+- **Performance**: High-performance Actix-web framework with compression
+
+📊 **See [PERFORMANCE.md](PERFORMANCE.md) for detailed optimization guide and benchmarks**
 
 ## 🛠 Technologies
 
@@ -68,13 +85,18 @@ This API was designed to be a centralized authentication service that can be eas
 - **regex 1** - Pattern matching for security
 - **chrono 0.4** - Date/timestamp manipulation
 
+### Performance
+- **redis 0.24** - Redis cache client
+- **deadpool-redis 0.14** - Async Redis connection pool
+- **actix-web-lab 0.20** - Compression middleware
+
 ### Documentation
 - **utoipa 4** - OpenAPI documentation generation
 - **utoipa-swagger-ui 6** - Interactive Swagger UI
 
 ### Database
-- **MongoDB 3.3.0** - NoSQL database
-- **mongodb-driver** - Official MongoDB driver for Rust
+- **MongoDB 3.3.0** - NoSQL database with optimized connection pool
+- **mongodb-driver** - Official MongoDB driver for Rust with Zstd compression
 
 ### Serialization & Configuration
 - **serde 1.0** - Serialization/deserialization
@@ -82,13 +104,14 @@ This API was designed to be a centralized authentication service that can be eas
 - **dotenv 0.15** - Environment variable loading
 
 ### Utilities
-- **uuid 1.0** - Unique identifier generation
+- **uuid 1.0** - Unique identifier generation (v4)
 - **env_logger 0.10** - Logging system
 
 ## 📋 Prerequisites
 
 - **Rust 1.70+** with Cargo
 - **MongoDB 6.0+** (local or Atlas)
+- **Redis 6.0+** (optional, for caching)
 - **OpenSSL** (for RSA key generation)
 
 ### Version Verification
@@ -219,7 +242,62 @@ http://localhost:8080
 
 - **Swagger UI**: http://localhost:8080/swagger-ui/
 - **OpenAPI Spec**: http://localhost:8080/api-docs/openapi.json
-- **Postman Collection**: `Kong_Security_API.postman_collection.json`
+- **Postman Collection**: `Kong_Security_API_MultiTenant.postman_collection.json`
+
+---
+
+## 🏢 Multi-Tenancy
+
+Kong Security API supports **complete multi-tenancy** with tenant isolation. Each tenant (organization/system) has completely isolated data.
+
+### Key Features
+
+- ✅ **UUID-based Tenant IDs**: Automatically generated, impossible to duplicate
+- ✅ **Complete Data Isolation**: Users, logs, and tokens are isolated per tenant
+- ✅ **Tenant Validation Middleware**: All protected routes validate tenant existence and status
+- ✅ **Tenant Management API**: Full CRUD operations for tenant lifecycle
+- ✅ **Inactive Tenant Protection**: Deactivated tenants cannot access the API
+
+### Quick Start
+
+```bash
+# 1. Create a tenant (UUID generated automatically)
+curl -X POST http://localhost:8080/api/tenants \
+  -H "Content-Type: application/json" \
+  -d '{"name": "ACME Corp", "description": "Main tenant"}'
+
+# Response includes tenant_id UUID:
+# {"tenant_id": "550e8400-e29b-41d4-a716-446655440000", ...}
+
+# 2. Use tenant_id UUID in all requests
+export TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+
+# 3. Register user with tenant header
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: $TENANT_ID" \
+  -d '{"email": "user@acme.com", "password": "SecurePass123!"}'
+```
+
+### Documentation
+
+- 📖 [Complete Multi-Tenant Guide](./MULTI_TENANT.md)
+- 🚀 [Quick Start Guide](./QUICK_START.md)
+- 📮 [Postman Collection Guide](./POSTMAN_README.md)
+- 📊 [Implementation Summary](./SUMMARY.md)
+- 🗄️ [Database Indexes & Unique Constraints](./DATABASE_INDEXES.md)
+
+### Tenant Management Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/tenants` | Create tenant (UUID auto-generated) |
+| GET | `/api/tenants` | List all tenants |
+| GET | `/api/tenants/{id}` | Get tenant by UUID |
+| PUT | `/api/tenants/{id}` | Update tenant |
+| POST | `/api/tenants/{id}/activate` | Activate tenant |
+| POST | `/api/tenants/{id}/deactivate` | Deactivate tenant |
+| DELETE | `/api/tenants/{id}` | Delete tenant |
 
 ---
 

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use mongodb::bson;
 use crate::services::{PasswordResetService, UserService};
 use crate::auth::password::hash_password;
+use crate::middleware::tenant_validator::get_tenant_id;
 
 /// Request para solicitar reset de senha
 #[derive(Debug, Deserialize, Serialize)]
@@ -62,10 +63,22 @@ pub async fn request_password_reset(
     db: web::Data<mongodb::Database>,
 ) -> impl Responder {
     let email = &data.email;
+    
+    // Extrair tenant_id da requisição (adicionado pelo middleware)
+    let tenant_id = match get_tenant_id(&req) {
+        Some(id) => id,
+        None => {
+            return HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "Tenant ID required",
+                "message": "Tenant ID must be provided"
+            }));
+        }
+    };
+    
     let user_service = UserService::new(db.get_ref().clone());
     
-    // Verificar se usuário existe
-    match user_service.find_by_email(email).await {
+    // Verificar se usuário existe no tenant
+    match user_service.find_by_email_and_tenant(email, &tenant_id).await {
         Ok(Some(_user)) => {
             // Obter IP do cliente para auditoria
             let ip_address = req
@@ -74,7 +87,7 @@ pub async fn request_password_reset(
                 .map(|s| s.to_string());
             
             // Gerar token (válido por 1 hora)
-            match reset_service.create_reset_token(email, 1, ip_address).await {
+            match reset_service.create_reset_token(&tenant_id, email, 1, ip_address).await {
                 Ok(token) => {
                     // TODO: Enviar email com o token
                     // Em modo desenvolvimento, retornamos o token no response

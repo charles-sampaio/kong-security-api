@@ -9,6 +9,7 @@ use crate::auth::{create_jwt_token, verify_jwt_token};
 use crate::models::{User, LoginLog};
 use crate::services::{UserService, LogService};
 use crate::middleware::validation::{LoginRequest, RegisterRequest, format_validation_errors};
+use crate::middleware::tenant_validator::get_tenant_id;
 
 #[derive(Serialize)]
 pub struct AuthResponse {
@@ -40,6 +41,7 @@ fn get_user_agent(req: &HttpRequest) -> Option<String> {
 pub async fn login(
     req: HttpRequest,
     db: web::Data<Database>,
+    log_service: web::Data<LogService>,
     login_req: web::Json<LoginRequest>,
 ) -> Result<HttpResponse> {
     // Validar entrada
@@ -51,22 +53,33 @@ pub async fn login(
         })));
     }
 
+    // Extrair tenant_id da requisição (adicionado pelo middleware)
+    let tenant_id = match get_tenant_id(&req) {
+        Some(id) => id,
+        None => {
+            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "Tenant ID required",
+                "message": "Tenant ID must be provided"
+            })));
+        }
+    };
+
     let user_service = UserService::new(db.get_ref().clone());
-    let log_service = LogService::new(db.get_ref().clone());
     
     let ip_address = get_client_ip(&req);
     let user_agent = get_user_agent(&req);
     
     // Create initial login log
     let mut login_log = LoginLog::new(
+        tenant_id.clone(),
         login_req.email.clone(),
         false, // Initially failed, will be updated if successful
         ip_address,
         user_agent,
     );
 
-    // Find user by email
-    match user_service.find_by_email(&login_req.email).await {
+    // Find user by email and tenant
+    match user_service.find_by_email_and_tenant(&login_req.email, &tenant_id).await {
         Ok(Some(user)) => {
             // Verify password
             if verify(&login_req.password, &user.password).unwrap_or(false) {
@@ -129,6 +142,7 @@ pub async fn login(
 }
 
 pub async fn register(
+    req: HttpRequest,
     db: web::Data<Database>,
     register_req: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
@@ -141,10 +155,21 @@ pub async fn register(
         })));
     }
 
+    // Extrair tenant_id da requisição (adicionado pelo middleware)
+    let tenant_id = match get_tenant_id(&req) {
+        Some(id) => id,
+        None => {
+            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "Tenant ID required",
+                "message": "Tenant ID must be provided"
+            })));
+        }
+    };
+
     let user_service = UserService::new(db.get_ref().clone());
 
-    // Check if user already exists
-    match user_service.find_by_email(&register_req.email).await {
+    // Check if user already exists in this tenant
+    match user_service.find_by_email_and_tenant(&register_req.email, &tenant_id).await {
         Ok(Some(_)) => return Ok(HttpResponse::Conflict().json("User already exists")),
         Ok(None) => {}
         Err(e) => {
@@ -167,6 +192,7 @@ pub async fn register(
     let _datetime = DateTime::from_system_time(now);
     
     let new_user = User::new(
+        tenant_id,
         register_req.email.clone(),
         hashed_password,
     );

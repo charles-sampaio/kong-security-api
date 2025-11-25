@@ -1,21 +1,24 @@
-use mongodb::{Database, Collection, bson::doc};
-use futures_util::stream::StreamExt;
+use mongodb::{Database, Collection, bson::doc, options::FindOptions};
+use futures_util::TryStreamExt;
 use std::error::Error;
 use crate::models::{LoginLog, LoginStats};
+use crate::cache::{RedisCache, cache_keys};
 
 pub struct LogService {
     db: Database,
+    cache: Option<RedisCache>,
 }
 
 impl LogService {
-    pub fn new(db: Database) -> Self {
-        Self { db }
+    pub fn new(db: Database, cache: Option<RedisCache>) -> Self {
+        Self { db, cache }
     }
 
     pub fn logs_collection(&self) -> Collection<LoginLog> {
         self.db.collection("logs")
     }
 
+    /// Salvar log e invalidar cache
     pub async fn save_login_log(&self, login_log: &LoginLog) -> Result<mongodb::bson::oid::ObjectId, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         
@@ -23,6 +26,13 @@ impl LogService {
             Ok(result) => {
                 if let Some(id) = result.inserted_id.as_object_id() {
                     println!("✅ Login log saved successfully for email: {}", login_log.email);
+                    
+                    // Invalidar cache de logs do tenant
+                    if let Some(cache) = &self.cache {
+                        let pattern = cache_keys::logs_pattern(&login_log.tenant_id);
+                        let _ = cache.delete_pattern(&pattern).await;
+                    }
+                    
                     Ok(id)
                 } else {
                     Err("Failed to get inserted ID".into())
@@ -35,62 +45,79 @@ impl LogService {
         }
     }
 
+    /// Buscar logs de usuário (otimizado com sort e limit no MongoDB)
     pub async fn get_user_logs(&self, user_id: &str, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         let filter = doc! { "user_id": user_id };
 
-        let mut cursor = collection.find(filter).await?;
-        let mut logs = Vec::new();
-        let mut count = 0;
+        let find_options = FindOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .limit(limit)
+            .build();
 
-        while let Some(log) = cursor.next().await {
-            match log {
-                Ok(l) => {
-                    logs.push(l);
-                    count += 1;
-                    if let Some(limit_val) = limit {
-                        if count >= limit_val {
-                            break;
-                        }
-                    }
-                }
-                Err(e) => return Err(Box::new(e)),
-            }
-        }
+        let cursor = collection.find(filter).with_options(find_options).await?;
+        let logs: Vec<LoginLog> = cursor.try_collect().await?;
 
-        // Sort by timestamp descending (most recent first)
-        logs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(logs)
     }
 
+    /// Buscar logs de usuário por tenant (com cache)
+    /// Retorna (Vec<LoginLog>, from_cache)
+    pub async fn get_user_logs_by_tenant(&self, user_id: &str, tenant_id: &str, limit: Option<i64>) -> Result<(Vec<LoginLog>, bool), Box<dyn Error + Send + Sync>> {
+        // Cachear apenas primeira página com limite padrão
+        let cache_page = if limit == Some(50) { 1 } else { 0 };
+        
+        if cache_page > 0 {
+            if let Some(cache) = &self.cache {
+                let cache_key = cache_keys::tenant_logs(tenant_id, cache_page);
+                if let Ok(Some(logs)) = cache.get::<Vec<LoginLog>>(&cache_key).await {
+                    return Ok((logs, true));
+                }
+            }
+        }
+
+        let collection = self.logs_collection();
+        let filter = doc! { 
+            "user_id": user_id,
+            "tenant_id": tenant_id 
+        };
+
+        let find_options = FindOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .limit(limit)
+            .build();
+
+        let cursor = collection.find(filter).with_options(find_options).await?;
+        let logs: Vec<LoginLog> = cursor.try_collect().await?;
+
+        // Cachear primeira página (TTL de 2 minutos - logs mudam frequentemente)
+        if cache_page > 0 {
+            if let Some(cache) = &self.cache {
+                let cache_key = cache_keys::tenant_logs(tenant_id, cache_page);
+                let _ = cache.set_with_ttl(&cache_key, &logs, 120).await;
+            }
+        }
+
+        Ok((logs, false))
+    }
+
+    /// Buscar todos os logs (otimizado)
     pub async fn get_all_logs(&self, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         let filter = doc! {};
 
-        let mut cursor = collection.find(filter).await?;
-        let mut logs = Vec::new();
-        let mut count = 0;
+        let find_options = FindOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .limit(limit)
+            .build();
 
-        while let Some(log) = cursor.next().await {
-            match log {
-                Ok(l) => {
-                    logs.push(l);
-                    count += 1;
-                    if let Some(limit_val) = limit {
-                        if count >= limit_val {
-                            break;
-                        }
-                    }
-                }
-                Err(e) => return Err(Box::new(e)),
-            }
-        }
+        let cursor = collection.find(filter).with_options(find_options).await?;
+        let logs: Vec<LoginLog> = cursor.try_collect().await?;
 
-        // Sort by timestamp descending (most recent first)
-        logs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(logs)
     }
 
+    /// Buscar estatísticas de login (sem cache - dados em tempo real)
     pub async fn get_login_stats(&self, days: i32) -> Result<LoginStats, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         
@@ -129,31 +156,19 @@ impl LogService {
         })
     }
 
+    /// Buscar logs por email (otimizado)
     pub async fn get_logs_by_email(&self, email: &str, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
         let collection = self.logs_collection();
         let filter = doc! { "email": email };
 
-        let mut cursor = collection.find(filter).await?;
-        let mut logs = Vec::new();
-        let mut count = 0;
+        let find_options = FindOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .limit(limit)
+            .build();
 
-        while let Some(log) = cursor.next().await {
-            match log {
-                Ok(l) => {
-                    logs.push(l);
-                    count += 1;
-                    if let Some(limit_val) = limit {
-                        if count >= limit_val {
-                            break;
-                        }
-                    }
-                }
-                Err(e) => return Err(Box::new(e)),
-            }
-        }
+        let cursor = collection.find(filter).with_options(find_options).await?;
+        let logs: Vec<LoginLog> = cursor.try_collect().await?;
 
-        // Sort by timestamp descending (most recent first)
-        logs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(logs)
     }
 }

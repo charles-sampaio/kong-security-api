@@ -26,6 +26,19 @@ impl UserService {
         }
     }
 
+    pub async fn find_by_email_and_tenant(&self, email: &str, tenant_id: &str) -> Result<Option<User>, Box<dyn Error + Send + Sync>> {
+        let collection = self.users_collection();
+        let filter = doc! { 
+            "email": email,
+            "tenant_id": tenant_id 
+        };
+        
+        match collection.find_one(filter).await {
+            Ok(user) => Ok(user),
+            Err(e) => Err(Box::new(e)),
+        }
+    }
+
     pub async fn create_user(&self, user: &User) -> Result<ObjectId, Box<dyn Error + Send + Sync>> {
         let collection = self.users_collection();
         
@@ -46,6 +59,7 @@ impl UserService {
         let filter = doc! { "_id": id };
         let update = doc! {
             "$set": {
+                "tenant_id": &user.tenant_id,
                 "email": &user.email,
                 "password": &user.password,
                 "roles": &user.roles,
