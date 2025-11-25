@@ -200,6 +200,11 @@ pub mod cache_keys {
         format!("logs:{}:page:{}", tenant_id, page)
     }
 
+    /// Logs de usuário específico por tenant
+    pub fn user_tenant_logs(user_id: &str, tenant_id: &str) -> String {
+        format!("logs:user:{}:tenant:{}", user_id, tenant_id)
+    }
+
     /// Padrão para invalidar todos os caches de tenant
     pub fn tenant_pattern(tenant_id: &str) -> String {
         format!("tenant:{}*", tenant_id)
@@ -207,7 +212,7 @@ pub mod cache_keys {
 
     /// Padrão para invalidar cache de logs de tenant
     pub fn logs_pattern(tenant_id: &str) -> String {
-        format!("logs:{}*", tenant_id)
+        format!("logs:*tenant:{}", tenant_id)
     }
 }
 
