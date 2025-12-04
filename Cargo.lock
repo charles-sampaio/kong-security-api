@@ -148,9 +148,9 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "4.11.0"
+version = "4.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a597b77b5c6d6a1e1097fddde329a83665e25c5437c696a3a9a4aa514a614dea"
+checksum = "f2e3b15b3dc6c6ed996e4032389e9849d4ab002b1e92fbfe85b5f307d1479b4d"
 dependencies = [
  "actix-codec",
  "actix-http",
@@ -3167,6 +3167,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.107",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4016,9 +4038,9 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "shuttle-actix-web"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a2f65afc7b24105b7f8aaecf64bac8e62b161cf2ab949b628bd2ba6e5293ef7"
+checksum = "21af2c2ac47e561fa29a64681b342fad9d556e1fbde4abc9627a42641358bad0"
 dependencies = [
  "actix-web",
  "num_cpus",
@@ -4027,9 +4049,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-api-client"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "166fbe3022a11ff3f9f771b673f9e39578dec9274a406ff278ed9ee620272e0a"
+checksum = "a9fd4345091aa0f5b8bd24b42bc14a78c2b71fdc48e17998305433614c2a56c5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4050,11 +4072,11 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e60a2db8b8548a2a725316ae5d7a04b4dad680a4746372d1b7172f2065f9c345"
+checksum = "b6f952c8f559b90777000f7b4803c0bc983405599f2c0b2c68da1569ccd64016"
 dependencies = [
- "proc-macro-error",
+ "proc-macro-error2",
  "proc-macro2",
  "quote",
  "syn 2.0.107",
@@ -4062,9 +4084,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-common"
-version = "0.48.2"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8013d94cab8d047369ee2eca93f4baa2034e3ea09ca553df3384de1f56bbffb3"
+checksum = "709313a6ac5aa68df4793b6c733c2fc554aa298bdafdc193d8386131bab17480"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4080,7 +4102,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.26.3",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tower 0.4.13",
  "tracing",
  "tracing-opentelemetry",
@@ -4093,9 +4115,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d322a55314553aad71cd506451b817bec1d2ef5459d939f5642b472870c1e9"
+checksum = "21a7e0f26860c9acba9533cd5659a9c8b0a0e76b44307628e2925541ac1373fc"
 dependencies = [
  "futures-core",
  "prost",
@@ -4106,9 +4128,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20628ddf00446da52c448ef39b987321227195f6393dc6a5066a12fc22491bd3"
+checksum = "47bd47a75e9a09eb623cb4f00fce5f49ed9a968a7a60523d0d94c0d5af677f44"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4131,23 +4153,23 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57770033649fa028aa9cc76702c66eb6c93b47a103f5ad15e2739c6404689bba"
+checksum = "ca5dcd25164380881233e676bd897de629a7d719bf02214c1b6ba16a2d2079c9"
 dependencies = [
  "anyhow",
  "async-trait",
  "serde",
  "shuttle-common",
  "strfmt",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
 name = "shuttle-shared-db"
-version = "0.48.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e13d3f994f52dd2605eb964e9758eab07161b8a4bc92a2b993819d3e5d86c1b"
+checksum = "cb0fd4bf3ce53efb1e65a224de690983fd8b6ba3131fe83584d62bf3c1babb5a"
 dependencies = [
  "async-trait",
  "diesel-async",
@@ -5352,12 +5374,12 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "url"
-version = "2.5.7"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08bc136a29a3d1758e07a9cca267be308aeebf5cfd5a10f3f67ab2097683ef5b"
+checksum = "22784dbdf76fdde8af1aeda5622b546b422b6fc585325248a2bf9f5e41e94d6c"
 dependencies = [
  "form_urlencoded",
- "idna 1.1.0",
+ "idna 0.5.0",
  "percent-encoding",
  "serde",
 ]
