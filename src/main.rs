@@ -9,7 +9,7 @@ mod middleware;
 mod api_doc;
 mod cache;
 
-use actix_web::{web, App, HttpResponse, http::header, middleware::{Logger, Compress}};
+use actix_web::{web, HttpResponse, http::header, middleware::{Logger, Compress}};
 use actix_cors::Cors;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::SecretStore;
@@ -39,9 +39,8 @@ async fn main(
     // Get secrets
     let mongodb_uri = secrets.get("MONGODB_URI")
         .expect("MONGODB_URI secret not found");
-    let redis_url = secrets.get("REDIS_URL")
-        .ok(); // Redis é opcional
-    let jwt_secret = secrets.get("JWT_SECRET")
+    let redis_url = secrets.get("REDIS_URL"); // Redis é opcional
+    let _jwt_secret = secrets.get("JWT_SECRET")
         .expect("JWT_SECRET secret not found");
     
     log::info!("🚀 Starting Kong Security API with Shuttle...");
@@ -61,11 +60,12 @@ async fn main(
     }
     
     // Initialize Redis cache (optional)
-    let cache = if let Some(redis_url) = redis_url {
+    let cache = if let Some(redis_url_str) = redis_url {
         match RedisCache::new(CacheConfig {
-            redis_url: redis_url.clone(),
+            redis_url: redis_url_str.clone(),
             max_connections: 10,
             connection_timeout: std::time::Duration::from_secs(5),
+            default_ttl: 300, // 5 minutos padrão
         }) {
             Ok(c) => {
                 match c.ping().await {

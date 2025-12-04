@@ -33,9 +33,10 @@ pub struct RedisCache {
 
 impl RedisCache {
     /// Criar novo cliente Redis com pool de conexões otimizado
-    pub fn new(config: CacheConfig) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(config: CacheConfig) -> Result<Self, String> {
         let cfg = Config::from_url(&config.redis_url);
-        let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+        let pool = cfg.create_pool(Some(Runtime::Tokio1))
+            .map_err(|e| format!("Failed to create Redis pool: {}", e))?;
 
         Ok(Self {
             pool,
