@@ -235,3 +235,4 @@ async fn health_check(
         "timestamp": chrono::Utc::now().to_rfc3339(),
     }))
 }
+
