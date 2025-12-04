@@ -17,7 +17,26 @@ use utoipa::OpenApi;
     ),
     servers(
         (url = "http://localhost:8080", description = "Local development server"),
-        (url = "https://api.kongsecurity.com", description = "Production server")
+
+        (url = "https://kong-security-api.fly.dev", description = "Production server")
+    ),
+    paths(
+        crate::api::handlers::auth_handlers::login,
+        crate::api::handlers::auth_handlers::register,
+        crate::api::handlers::auth_handlers::protected,
+        crate::api::handlers::tenant_handlers::create_tenant,
+        crate::api::handlers::tenant_handlers::list_tenants,
+        crate::api::handlers::tenant_handlers::get_tenant,
+        crate::api::handlers::tenant_handlers::update_tenant,
+        crate::api::handlers::tenant_handlers::delete_tenant,
+        crate::api::handlers::tenant_handlers::activate_tenant,
+        crate::api::handlers::tenant_handlers::deactivate_tenant,
+        crate::api::handlers::log_handlers::get_my_logs,
+        crate::api::handlers::log_handlers::get_all_logs,
+        crate::api::handlers::log_handlers::get_login_stats,
+        crate::api::handlers::password_reset::request_password_reset,
+        crate::api::handlers::password_reset::validate_reset_token,
+        crate::api::handlers::password_reset::confirm_password_reset,
     ),
     components(schemas(
         LoginRequest,
@@ -31,11 +50,18 @@ use utoipa::OpenApi;
         crate::models::CreateTenantRequest,
         crate::models::UpdateTenantRequest,
         crate::models::TenantResponse,
+        crate::models::LoginLog,
+        crate::api::handlers::password_reset::PasswordResetRequest,
+        crate::api::handlers::password_reset::PasswordResetConfirm,
+        crate::api::handlers::password_reset::PasswordResetRequestResponse,
+        crate::api::handlers::password_reset::TokenValidationResponse,
+        crate::api::handlers::password_reset::PasswordResetConfirmResponse,
     )),
     tags(
         (name = "Authentication", description = "User authentication and registration endpoints"),
-        (name = "Tenants", description = "Multi-tenant management endpoints"),
+        (name = "Tenants", description = "Multi-tenant management endpoints (Admin only)"),
         (name = "Logs", description = "Login audit log endpoints"),
+        (name = "Password Reset", description = "Password recovery endpoints"),
         (name = "Health", description = "API health check endpoints")
     ),
     modifiers(&SecurityAddon)

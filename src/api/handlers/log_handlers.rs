@@ -9,6 +9,22 @@ pub struct LogsQuery {
     limit: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/logs/my-logins",
+    tag = "Logs",
+    responses(
+        (status = 200, description = "User's login logs retrieved successfully"),
+        (status = 401, description = "Invalid or missing token")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of logs to return")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_my_logs(
     req: HttpRequest,
     log_service: web::Data<LogService>,
@@ -51,6 +67,23 @@ pub async fn get_my_logs(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/admin/logs",
+    tag = "Logs",
+    responses(
+        (status = 200, description = "All logs retrieved successfully (Admin only)"),
+        (status = 401, description = "Invalid or missing token"),
+        (status = 403, description = "Admin access required")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy"),
+        ("limit" = Option<i64>, Query, description = "Maximum number of logs to return")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_all_logs(
     req: HttpRequest,
     log_service: web::Data<LogService>,
@@ -75,6 +108,22 @@ pub async fn get_all_logs(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/admin/logs/stats",
+    tag = "Logs",
+    responses(
+        (status = 200, description = "Login statistics retrieved successfully (Admin only)"),
+        (status = 401, description = "Invalid or missing token"),
+        (status = 403, description = "Admin access required")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_login_stats(
     req: HttpRequest,
     log_service: web::Data<LogService>,

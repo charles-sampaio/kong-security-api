@@ -64,12 +64,16 @@ impl LogService {
     /// Buscar logs de usuário por tenant (com cache)
     /// Retorna (Vec<LoginLog>, from_cache)
     pub async fn get_user_logs_by_tenant(&self, user_id: &str, tenant_id: &str, limit: Option<i64>) -> Result<(Vec<LoginLog>, bool), Box<dyn Error + Send + Sync>> {
-        // Cachear apenas primeira página com limite padrão
-        let cache_page = if limit == Some(50) { 1 } else { 0 };
+        // Define limite padrão de 50 se não especificado
+        let effective_limit = limit.unwrap_or(50);
         
-        if cache_page > 0 {
+        // Cachear primeira página com até 50 registros
+        let should_cache = effective_limit <= 50;
+        
+        // Tentar buscar do cache
+        if should_cache {
             if let Some(cache) = &self.cache {
-                let cache_key = cache_keys::tenant_logs(tenant_id, cache_page);
+                let cache_key = cache_keys::user_tenant_logs(user_id, tenant_id);
                 if let Ok(Some(logs)) = cache.get::<Vec<LoginLog>>(&cache_key).await {
                     return Ok((logs, true));
                 }
@@ -84,16 +88,16 @@ impl LogService {
 
         let find_options = FindOptions::builder()
             .sort(doc! { "timestamp": -1 })
-            .limit(limit)
+            .limit(Some(effective_limit))
             .build();
 
         let cursor = collection.find(filter).with_options(find_options).await?;
         let logs: Vec<LoginLog> = cursor.try_collect().await?;
 
         // Cachear primeira página (TTL de 2 minutos - logs mudam frequentemente)
-        if cache_page > 0 {
+        if should_cache {
             if let Some(cache) = &self.cache {
-                let cache_key = cache_keys::tenant_logs(tenant_id, cache_page);
+                let cache_key = cache_keys::user_tenant_logs(user_id, tenant_id);
                 let _ = cache.set_with_ttl(&cache_key, &logs, 120).await;
             }
         }

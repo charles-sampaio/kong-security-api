@@ -38,6 +38,20 @@ fn get_user_agent(req: &HttpRequest) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/login",
+    tag = "Authentication",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 401, description = "Invalid credentials"),
+        (status = 400, description = "Validation error")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    )
+)]
 pub async fn login(
     req: HttpRequest,
     db: web::Data<Database>,
@@ -141,6 +155,23 @@ pub async fn login(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/register",
+    tag = "Authentication",
+    request_body = RegisterRequest,
+    responses(
+        (status = 201, description = "User registered successfully"),
+        (status = 409, description = "User already exists"),
+        (status = 400, description = "Validation error")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn register(
     req: HttpRequest,
     db: web::Data<Database>,
@@ -216,6 +247,21 @@ pub async fn register(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/auth/protected",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "Access granted", body = UserResponse),
+        (status = 401, description = "Invalid or missing token")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn protected(req: HttpRequest) -> Result<HttpResponse> {
     match verify_jwt_token(&req) {
         Ok(user) => {

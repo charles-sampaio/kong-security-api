@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "Kong Security API - Multi-Tenant",
-		"description": "Complete Kong Security API collection with Multi-Tenant support, JWT authentication, password reset, and unique constraints (UUID tenant_id + document field for CNPJ/CPF)",
+		"_postman_id": "b2c3d4e5-f6a7-8901-bcde-fa2345678901",
+		"name": "Kong Security API - Production",
+		"description": "Kong Security API collection configured for PRODUCTION environment (https://kong-security-api.fly.dev)\n\nComplete API with Multi-Tenant support, JWT authentication, password reset, and comprehensive security features.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -390,7 +390,7 @@
 								"request"
 							]
 						},
-						"description": "Request password reset. Requires X-Tenant-ID header.\n\n**In DEV mode:** Token is returned in response.\n**In production:** Token is sent by email."
+						"description": "Request password reset. Requires X-Tenant-ID header.\n\n**In PRODUCTION:** Token is sent by email (not returned in response)."
 					},
 					"response": []
 				},
@@ -778,13 +778,14 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:8080",
+			"value": "https://kong-security-api.fly.dev",
 			"type": "string"
 		},
 		{
 			"key": "tenant_id",
-			"value": "550e8400-e29b-41d4-a716-446655440000",
-			"type": "string"
+			"value": "",
+			"type": "string",
+			"description": "Set your tenant ID here after creating a tenant"
 		},
 		{
 			"key": "jwt_token",

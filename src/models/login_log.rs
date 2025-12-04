@@ -3,8 +3,9 @@ use mongodb::bson::{oid::ObjectId, DateTime};
 use std::time::SystemTime;
 use chrono;
 use crate::utils::user_agent_parser::UserAgentInfo;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct LoginLog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<ObjectId>,

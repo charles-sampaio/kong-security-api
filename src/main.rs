@@ -16,7 +16,6 @@ use database::connect_to_database;
 use services::{UserService, LogService, PasswordResetService, TenantService};
 use api::handlers::auth_handlers::*;
 use api::handlers::log_handlers::*;
-use api::handlers::tenant_handlers::configure_tenant_routes;
 use api::handlers::password_reset::{
     request_password_reset,
     validate_reset_token,
@@ -107,20 +106,17 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::JsonConfig::default().limit(512 * 1024)) // 512KB JSON limit (reduzido)
             
             // Health check endpoint (sem validação de tenant)
-            .route("/health", web::get().to(health_check))
+            .route("/api/health", web::get().to(health_check))
             
             // Swagger UI (sem validação de tenant)
             .service(
-                SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-docs/openapi.json", openapi.clone())
+                SwaggerUi::new("/api/swagger-ui/{_:.*}")
+                    .url("/api/api-docs/openapi.json", openapi.clone())
             )
-            
-            // Tenant Management routes (sem validação de tenant para gerenciar tenants)
-            .configure(configure_tenant_routes)
             
             // API routes with Tenant Validation
             .service(
-                web::scope("")
+                web::scope("/api")
                     .wrap(TenantValidator::new(db.clone()))
                     // Authentication
                     .service(
@@ -133,14 +129,25 @@ async fn main() -> std::io::Result<()> {
                             .route("/password-reset/validate", web::post().to(validate_reset_token))
                             .route("/password-reset/confirm", web::post().to(confirm_password_reset))
                     )
+                    // Tenants Management (Admin only)
+                    .service(
+                        web::scope("/tenants")
+                            .route("", web::post().to(api::handlers::tenant_handlers::create_tenant))
+                            .route("", web::get().to(api::handlers::tenant_handlers::list_tenants))
+                            .route("/{tenant_id}", web::get().to(api::handlers::tenant_handlers::get_tenant))
+                            .route("/{tenant_id}", web::put().to(api::handlers::tenant_handlers::update_tenant))
+                            .route("/{tenant_id}", web::delete().to(api::handlers::tenant_handlers::delete_tenant))
+                            .route("/{tenant_id}/activate", web::post().to(api::handlers::tenant_handlers::activate_tenant))
+                            .route("/{tenant_id}/deactivate", web::post().to(api::handlers::tenant_handlers::deactivate_tenant))
+                    )
                     // Logs
                     .service(
-                        web::scope("/api/logs")
+                        web::scope("/logs")
                             .route("/my-logins", web::get().to(get_my_logs))
                     )
                     // Admin
                     .service(
-                        web::scope("/api/admin")
+                        web::scope("/admin")
                             .route("/logs", web::get().to(get_all_logs))
                             .route("/logs/stats", web::get().to(get_login_stats))
                     )
@@ -157,10 +164,10 @@ fn log_startup_info(cache_enabled: bool) {
     println!("\n╔══════════════════════════════════════════════════════════════╗");
     println!("║          🚀 Kong Security API - Server Started              ║");
     println!("╠══════════════════════════════════════════════════════════════╣");
-    println!("║  📍 Server URL:    http://localhost:8080                    ║");
-    println!("║  📊 Swagger UI:    http://localhost:8080/swagger-ui/        ║");
-    println!("║  📖 OpenAPI Spec:  http://localhost:8080/api-docs/openapi.json ║");
-    println!("║  ❤️  Health Check:  http://localhost:8080/health             ║");
+    println!("║  📍 Server URL:    http://localhost:8080/api                ║");
+    println!("║  📊 Swagger UI:    http://localhost:8080/api/swagger-ui/    ║");
+    println!("║  📖 OpenAPI Spec:  http://localhost:8080/api/api-docs/openapi.json ║");
+    println!("║  ❤️  Health Check:  http://localhost:8080/api/health         ║");
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  🔒 Security Features Enabled:                              ║");
     println!("║     ✅ CORS Protection                                       ║");
