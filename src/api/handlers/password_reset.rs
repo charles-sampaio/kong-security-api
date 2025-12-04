@@ -1,31 +1,32 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use mongodb::bson;
+use utoipa::ToSchema;
 use crate::services::{PasswordResetService, UserService};
 use crate::auth::password::hash_password;
 use crate::middleware::tenant_validator::get_tenant_id;
 
 /// Request para solicitar reset de senha
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct PasswordResetRequest {
     pub email: String,
 }
 
 /// Request para confirmar reset de senha com novo password
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct PasswordResetConfirm {
     pub token: String,
     pub new_password: String,
 }
 
 /// Response de sucesso genérico
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SuccessResponse {
     pub message: String,
 }
 
 /// Response para solicitação de reset de senha
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PasswordResetRequestResponse {
     pub success: bool,
     pub message: String,
@@ -34,7 +35,7 @@ pub struct PasswordResetRequestResponse {
 }
 
 /// Response para validação de token
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TokenValidationResponse {
     pub valid: bool,
     pub email: String,
@@ -42,19 +43,33 @@ pub struct TokenValidationResponse {
 }
 
 /// Response para confirmação de reset
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PasswordResetConfirmResponse {
     pub success: bool,
     pub message: String,
 }
 
 /// Response de erro
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub error: String,
 }
 
-/// POST /auth/password-reset/request
+#[utoipa::path(
+    post,
+    path = "/api/auth/password-reset/request",
+    tag = "Password Reset",
+    request_body = PasswordResetRequest,
+    responses(
+        (status = 200, description = "Reset token generated successfully"),
+        (status = 404, description = "User not found"),
+        (status = 400, description = "Invalid request")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    )
+)]
+/// POST /api/auth/password-reset/request
 /// Solicita um token de reset de senha
 pub async fn request_password_reset(
     req: HttpRequest,
@@ -128,7 +143,20 @@ pub async fn request_password_reset(
     }
 }
 
-/// POST /auth/password-reset/validate
+#[utoipa::path(
+    post,
+    path = "/api/auth/password-reset/validate",
+    tag = "Password Reset",
+    request_body = PasswordResetConfirm,
+    responses(
+        (status = 200, description = "Token is valid"),
+        (status = 400, description = "Invalid or expired token")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    )
+)]
+/// POST /api/auth/password-reset/validate
 /// Valida se um token é válido
 pub async fn validate_reset_token(
     data: web::Json<serde_json::Value>,
@@ -161,6 +189,20 @@ pub async fn validate_reset_token(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/password-reset/confirm",
+    tag = "Password Reset",
+    request_body = PasswordResetConfirm,
+    responses(
+        (status = 200, description = "Password reset successfully"),
+        (status = 400, description = "Invalid or expired token"),
+        (status = 404, description = "User not found")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    )
+)]
 /// POST /auth/password-reset/confirm
 /// Confirma o reset de senha com novo password
 pub async fn confirm_password_reset(

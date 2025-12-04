@@ -242,7 +242,10 @@ http://localhost:8080
 
 - **Swagger UI**: http://localhost:8080/swagger-ui/
 - **OpenAPI Spec**: http://localhost:8080/api-docs/openapi.json
-- **Postman Collection**: `Kong_Security_API_MultiTenant.postman_collection.json`
+- **Postman Collections**: 
+  - `Kong_Security_API_MultiTenant.postman_collection.json` (Development - localhost)
+  - `Kong_Security_API_Production.postman_collection.json` (Production - Fly.io)
+  - `Kong_Security_API_Production.postman_environment.json` (Environment file)
 
 ---
 
@@ -283,7 +286,8 @@ curl -X POST http://localhost:8080/auth/register \
 
 - 📖 [Complete Multi-Tenant Guide](./MULTI_TENANT.md)
 - 🚀 [Quick Start Guide](./QUICK_START.md)
-- 📮 [Postman Collection Guide](./POSTMAN_README.md)
+- 📮 [Postman Collection Guide (Development)](./POSTMAN_README.md)
+- 🌐 [Production Collection Guide](./PRODUCTION_COLLECTION.md)
 - 📊 [Implementation Summary](./SUMMARY.md)
 - 🗄️ [Database Indexes & Unique Constraints](./DATABASE_INDEXES.md)
 
