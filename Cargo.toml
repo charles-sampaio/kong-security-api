@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Shuttle Runtime
+shuttle-actix-web = "0.48.0"
+shuttle-runtime = "0.48.0"
+shuttle-shared-db = { version = "0.48.0", features = ["postgres", "mongodb"] }
+
 # Web Framework
 actix-web = "4"
 actix-rt = "2"

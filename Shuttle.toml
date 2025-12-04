@@ -1,0 +1,9 @@
+[project]
+name = "kong-security-api"
+
+[build]
+assets = []
+
+[env]
+# Estas serão secrets no Shuttle
+# Configure com: cargo shuttle secrets set KEY=VALUE
