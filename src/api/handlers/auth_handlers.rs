@@ -95,8 +95,22 @@ pub async fn login(
     // Find user by email and tenant
     match user_service.find_by_email_and_tenant(&login_req.email, &tenant_id).await {
         Ok(Some(user)) => {
-            // Verify password
-            if verify(&login_req.password, &user.password).unwrap_or(false) {
+            // Verify password (check if user has password set - OAuth users don't)
+            let password_valid = match &user.password {
+                Some(pwd) => verify(&login_req.password, pwd).unwrap_or(false),
+                None => {
+                    // User registered via OAuth, cannot login with password
+                    login_log.set_failure("User registered via OAuth - please use OAuth login".to_string());
+                    if let Err(e) = log_service.save_login_log(&login_log).await {
+                        eprintln!("Failed to save login log: {}", e);
+                    }
+                    return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+                        "error": "This account uses OAuth authentication. Please sign in with Google or Apple."
+                    })));
+                }
+            };
+            
+            if password_valid {
                 // Generate JWT token
                 match create_jwt_token(&user) {
                     Ok(token) => {
@@ -229,14 +243,13 @@ pub async fn register(
     );
 
     // Save user to database
-    match user_service.create_user(&new_user).await {
-        Ok(_) => {
-            let new_user_email = new_user.email.clone();
+    match user_service.create_user(new_user).await {
+        Ok(user_id) => {
             let response = UserResponse {
-                id: new_user._id.unwrap().to_hex(),
-                email: new_user.email,
-                name: new_user_email, // Use email as name for now
-                roles: new_user.roles.unwrap_or_default(),
+                id: user_id.to_hex(),
+                email: register_req.email.clone(),
+                name: register_req.email.clone(), // Use email as name for now
+                roles: vec!["user".to_string()],
             };
             Ok(HttpResponse::Created().json(response))
         }

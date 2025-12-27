@@ -263,9 +263,9 @@ pub async fn confirm_password_reset(
     
     // Atualizar senha do usuário
     let mut updated_user = user.clone();
-    updated_user.password = hashed_password;
+    updated_user.password = Some(hashed_password);
     
-    match user_service.update_user(&user._id.unwrap(), &updated_user).await {
+    match user_service.update_user(&updated_user).await {
         Ok(true) => {
             // Marcar token como usado
             let _ = reset_service.mark_token_as_used(&data.token).await;

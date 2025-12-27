@@ -21,6 +21,9 @@ jsonwebtoken = "9"
 bcrypt = "0.15"
 validator = { version = "0.18", features = ["derive"] }
 regex = "1"
+oauth2 = "4.4"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+base64 = "0.22"
 
 # Date & Time
 chrono = { version = "0.4", features = ["serde"] }

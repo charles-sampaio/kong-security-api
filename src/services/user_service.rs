@@ -1,7 +1,7 @@
 use mongodb::{Database, Collection, bson::{doc, oid::ObjectId}};
 use futures_util::stream::StreamExt;
 use std::error::Error;
-use crate::models::User;
+use crate::models::{User, user::OAuthProvider};
 
 pub struct UserService {
     db: Database,
@@ -39,7 +39,27 @@ impl UserService {
         }
     }
 
-    pub async fn create_user(&self, user: &User) -> Result<ObjectId, Box<dyn Error + Send + Sync>> {
+    /// Buscar usuário por OAuth provider e OAuth ID
+    pub async fn find_by_oauth(
+        &self, 
+        tenant_id: &str, 
+        provider: OAuthProvider, 
+        oauth_id: &str
+    ) -> Result<Option<User>, Box<dyn Error + Send + Sync>> {
+        let collection = self.users_collection();
+        let filter = doc! { 
+            "tenant_id": tenant_id,
+            "oauth_provider": provider.as_str(),
+            "oauth_id": oauth_id
+        };
+        
+        match collection.find_one(filter).await {
+            Ok(user) => Ok(user),
+            Err(e) => Err(Box::new(e)),
+        }
+    }
+
+    pub async fn create_user(&self, user: User) -> Result<ObjectId, Box<dyn Error + Send + Sync>> {
         let collection = self.users_collection();
         
         match collection.insert_one(user).await {
@@ -54,14 +74,18 @@ impl UserService {
         }
     }
 
-    pub async fn update_user(&self, id: &ObjectId, user: &User) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub async fn update_user(&self, user: &User) -> Result<bool, Box<dyn Error + Send + Sync>> {
         let collection = self.users_collection();
-        let filter = doc! { "_id": id };
+        let filter = doc! { "_id": user._id };
         let update = doc! {
             "$set": {
                 "tenant_id": &user.tenant_id,
                 "email": &user.email,
                 "password": &user.password,
+                "oauth_provider": user.oauth_provider.as_ref().map(|p| p.as_str()),
+                "oauth_id": &user.oauth_id,
+                "name": &user.name,
+                "picture": &user.picture,
                 "roles": &user.roles,
                 "created_at": &user.created_at,
                 "updated_at": &user.updated_at,

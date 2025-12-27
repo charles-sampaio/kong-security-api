@@ -2,13 +2,43 @@ use serde::{Serialize, Deserialize};
 use mongodb::bson::{oid::ObjectId, DateTime};
 use std::time::SystemTime;
 
+/// Provider de autenticação OAuth
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum OAuthProvider {
+    Google,
+    Apple,
+}
+
+impl OAuthProvider {
+    pub fn as_str(&self) -> &str {
+        match self {
+            OAuthProvider::Google => "google",
+            OAuthProvider::Apple => "apple",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<ObjectId>,
     pub tenant_id: String,
     pub email: String,
-    pub password: String,
+    
+    // Password é opcional agora (OAuth não precisa)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+
+    // Campos OAuth
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub oauth_provider: Option<OAuthProvider>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub oauth_id: Option<String>, // ID do usuário no provider (Google ID, Apple ID)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub picture: Option<String>, // URL da foto de perfil
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roles: Option<Vec<String>>,
@@ -35,18 +65,53 @@ pub struct User {
 }
 
 impl User {
+    /// Criar usuário tradicional com senha (DEPRECATED - usar OAuth)
     pub fn new(tenant_id: String, email: String, password_hash: String) -> Self {
         Self {
             _id: Some(ObjectId::new()),
             tenant_id,
             email,
-            password: password_hash,
+            password: Some(password_hash),
+            oauth_provider: None,
+            oauth_id: None,
+            name: None,
+            picture: None,
             roles: Some(vec!["user".to_string()]),
             created_at: Some(DateTime::from_system_time(SystemTime::now())),
             updated_at: Some(DateTime::from_system_time(SystemTime::now())),
             last_login: None,
             is_active: true,
             email_verified: false,
+            password_reset_token: None,
+            password_reset_expiry: None,
+            refresh_tokens: Some(vec![]),
+        }
+    }
+
+    /// Criar usuário via OAuth (Google/Apple)
+    pub fn from_oauth(
+        tenant_id: String,
+        email: String,
+        oauth_provider: OAuthProvider,
+        oauth_id: String,
+        name: Option<String>,
+        picture: Option<String>,
+    ) -> Self {
+        Self {
+            _id: Some(ObjectId::new()),
+            tenant_id,
+            email,
+            password: None, // OAuth não usa senha
+            oauth_provider: Some(oauth_provider),
+            oauth_id: Some(oauth_id),
+            name,
+            picture,
+            roles: Some(vec!["user".to_string()]),
+            created_at: Some(DateTime::from_system_time(SystemTime::now())),
+            updated_at: Some(DateTime::from_system_time(SystemTime::now())),
+            last_login: None,
+            is_active: true,
+            email_verified: true, // OAuth já verificou o email
             password_reset_token: None,
             password_reset_expiry: None,
             refresh_tokens: Some(vec![]),

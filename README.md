@@ -1,10 +1,14 @@
 # Kong Security API
 
+> ⚠️ **BREAKING CHANGE**: Authentication now exclusively via OAuth (Google & Apple). Email/password login has been removed.  
+> See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for migration steps.
+
 A robust authentication and authorization API developed in Rust using Actix-web, designed for integration with Kong Gateway and other microservices.
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
+- [🆕 OAuth Authentication](#-oauth-authentication)
 - [Features](#features)
 - [Technologies](#technologies)
 - [Prerequisites](#prerequisites)
@@ -24,15 +28,57 @@ A robust authentication and authorization API developed in Rust using Actix-web,
 
 Kong Security API is an authentication and authorization solution developed in Rust that provides:
 
-- User registration and login system
-- JWT (JSON Web Tokens) based authentication
+- **🔐 OAuth 2.0 Authentication** (Google & Apple Sign-In)
+- JWT (JSON Web Tokens) based authorization
 - Role and permission management
-- MongoDB integration
-- Password encryption with bcrypt
+- MongoDB integration with multi-tenancy
+- Automatic user registration via OAuth
 - Refresh tokens for session renewal
-- Structured logging and logging middleware
+- Structured logging and audit trails
 
 This API was designed to be a centralized authentication service that can be easily integrated with Kong Gateway or used as an independent microservice.
+
+## 🆕 OAuth Authentication
+
+**Autenticação 100% via OAuth!** Users can only sign in with:
+
+- ✅ **Sign in with Google** - Full profile data (name, email, picture)
+- ✅ **Sign in with Apple** - Privacy-focused (may use relay email)
+
+### Quick Start
+
+1. **Configure OAuth Credentials** - See [OAUTH_SETUP.md](./OAUTH_SETUP.md)
+   - Google: Create OAuth 2.0 Client in Google Cloud Console
+   - Apple: Create Service ID in Apple Developer Portal
+
+2. **Update Environment Variables**
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-secret
+   GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/google/callback
+   
+   APPLE_CLIENT_ID=com.yourcompany.app
+   APPLE_CLIENT_SECRET=your-jwt-secret
+   APPLE_REDIRECT_URL=http://localhost:8080/api/auth/apple/callback
+   ```
+
+3. **Frontend Integration**
+   ```typescript
+   // Get authorization URL
+   const { auth_url, state } = await fetch('/api/auth/google', {
+     headers: { 'X-Tenant-ID': tenantId }
+   }).then(r => r.json());
+   
+   // Redirect to Google/Apple
+   localStorage.setItem('oauth_state', state);
+   window.location.href = auth_url;
+   
+   // Callback returns JWT token automatically
+   ```
+
+📚 **Complete Guides:**
+- [OAUTH_SETUP.md](./OAUTH_SETUP.md) - OAuth configuration (Google & Apple)
+- [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) - Migrating from email/password auth
 
 ## ✨ Features
 
@@ -78,8 +124,11 @@ This API was designed to be a centralized authentication service that can be eas
 - **Tokio** - Asynchronous runtime
 
 ### Authentication & Security
+- **oauth2 4.4** - OAuth 2.0 client library (Google & Apple)
+- **reqwest 0.12** - HTTP client with rustls-tls for OAuth callbacks
+- **base64 0.22** - Base64 encoding/decoding for Apple JWT tokens
 - **jsonwebtoken 9** - JWT implementation (RS256)
-- **bcrypt 0.15** - Password hashing
+- **bcrypt 0.15** - Password hashing (legacy)
 - **actix-cors 0.7** - CORS middleware
 - **validator 0.18** - Input validation
 - **regex 1** - Pattern matching for security
@@ -113,6 +162,8 @@ This API was designed to be a centralized authentication service that can be eas
 - **MongoDB 6.0+** (local or Atlas)
 - **Redis 6.0+** (optional, for caching)
 - **OpenSSL** (for RSA key generation)
+- **🆕 Google OAuth Credentials** - [Get from Google Cloud Console](https://console.cloud.google.com/)
+- **🆕 Apple OAuth Credentials** - [Get from Apple Developer](https://developer.apple.com/account/)
 
 ### Version Verification
 
@@ -124,6 +175,15 @@ cargo --version
 # Check MongoDB connection
 mongosh --version
 ```
+
+### OAuth Setup
+
+Before running the application, you must configure OAuth credentials:
+
+1. **Google OAuth**: Follow [OAUTH_SETUP.md](./OAUTH_SETUP.md#google-oauth) to create OAuth 2.0 Client
+2. **Apple OAuth**: Follow [OAUTH_SETUP.md](./OAUTH_SETUP.md#apple-sign-in) to create Service ID and generate client secret
+
+⚠️ **Required**: Application will not start without valid OAuth configuration.
 
 ## 🚀 Installation
 

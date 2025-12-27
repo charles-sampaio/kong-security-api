@@ -13,7 +13,7 @@ use actix_web::{App, HttpServer, middleware::{Logger, Compress}, web, HttpRespon
 use actix_cors::Cors;
 use dotenv::dotenv;
 use database::connect_to_database;
-use services::{UserService, LogService, PasswordResetService, TenantService};
+use services::{UserService, LogService, PasswordResetService, TenantService, OAuthService, OAuthConfig};
 use api::handlers::auth_handlers::*;
 use api::handlers::log_handlers::*;
 use api::handlers::password_reset::{
@@ -21,11 +21,13 @@ use api::handlers::password_reset::{
     validate_reset_token,
     confirm_password_reset,
 };
+use api::handlers::oauth_handlers;
 use middleware::TenantValidator;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use api_doc::ApiDoc;
 use cache::{RedisCache, CacheConfig};
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -69,6 +71,30 @@ async fn main() -> std::io::Result<()> {
     let log_service = web::Data::new(LogService::new(db.clone(), cache.clone()));
     let reset_service = web::Data::new(PasswordResetService::new(&db));
     
+    // Initialize OAuth Service (Google + Apple)
+    log::info!("🔧 Initializing OAuth services...");
+    let google_config = OAuthConfig {
+        client_id: env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set"),
+        client_secret: env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set"),
+        redirect_url: env::var("GOOGLE_REDIRECT_URL").expect("GOOGLE_REDIRECT_URL must be set"),
+        auth_url: "https://accounts.google.com/o/oauth2/v2/auth".to_string(),
+        token_url: "https://oauth2.googleapis.com/token".to_string(),
+    };
+    
+    let apple_config = OAuthConfig {
+        client_id: env::var("APPLE_CLIENT_ID").expect("APPLE_CLIENT_ID must be set"),
+        client_secret: env::var("APPLE_CLIENT_SECRET").expect("APPLE_CLIENT_SECRET must be set"),
+        redirect_url: env::var("APPLE_REDIRECT_URL").expect("APPLE_REDIRECT_URL must be set"),
+        auth_url: "https://appleid.apple.com/auth/authorize".to_string(),
+        token_url: "https://appleid.apple.com/auth/token".to_string(),
+    };
+    
+    let oauth_service = web::Data::new(
+        OAuthService::new(Some(google_config), Some(apple_config))
+            .expect("Failed to initialize OAuth service")
+    );
+    log::info!("✅ OAuth services initialized (Google + Apple)");
+    
     log::info!("✅ Database connected successfully");
     
     // Log startup information with URLs
@@ -103,6 +129,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(user_service.clone())
             .app_data(log_service.clone())
             .app_data(reset_service.clone())
+            .app_data(oauth_service.clone())
             .app_data(web::JsonConfig::default().limit(512 * 1024)) // 512KB JSON limit (reduzido)
             
             // Health check endpoint (sem validação de tenant)
@@ -128,6 +155,11 @@ async fn main() -> std::io::Result<()> {
                             .route("/password-reset/request", web::post().to(request_password_reset))
                             .route("/password-reset/validate", web::post().to(validate_reset_token))
                             .route("/password-reset/confirm", web::post().to(confirm_password_reset))
+                            // OAuth endpoints (Google + Apple)
+                            .route("/google", web::get().to(oauth_handlers::google_auth_url))
+                            .route("/google/callback", web::get().to(oauth_handlers::google_auth_callback))
+                            .route("/apple", web::get().to(oauth_handlers::apple_auth_url))
+                            .route("/apple/callback", web::get().to(oauth_handlers::apple_auth_callback))
                     )
                     // Tenants Management (Admin only)
                     .service(

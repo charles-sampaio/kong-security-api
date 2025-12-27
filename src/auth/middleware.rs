@@ -50,7 +50,11 @@ pub fn verify_jwt_token(req: &HttpRequest) -> Result<User, String> {
         _id: Some(user_id),
         tenant_id: String::from(""), // TODO: Extract tenant_id from token claims
         email: claims.email,
-        password: String::new(), // Don't include password in token verification
+        password: None, // OAuth users don't have password
+        oauth_provider: None,
+        oauth_id: None,
+        name: None,
+        picture: None,
         roles: Some(claims.roles),
         created_at: Some(mongodb::bson::DateTime::now()),
         updated_at: Some(mongodb::bson::DateTime::now()),
