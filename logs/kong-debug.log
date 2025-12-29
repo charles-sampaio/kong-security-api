@@ -1,0 +1,540 @@
+warning: unused import: `OAuthUserInfo`
+  --> src/services/mod.rs:11:52
+   |
+11 | pub use oauth_service::{OAuthService, OAuthConfig, OAuthUserInfo};
+   |                                                    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `pkce_verifier`
+  --> src/services/oauth_service.rs:95:30
+   |
+95 |         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+   |                              ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_pkce_verifier`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: methods `has_role`, `add_role`, and `remove_role` are never used
+   --> src/models/user.rs:127:12
+    |
+ 67 | impl User {
+    | --------- methods in this implementation
+...
+127 |     pub fn has_role(&self, role: &str) -> bool {
+    |            ^^^^^^^^
+...
+133 |     pub fn add_role(&mut self, role: String) {
+    |            ^^^^^^^^
+...
+143 |     pub fn remove_role(&mut self, role: &str) {
+    |            ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: method `mark_as_used` is never used
+  --> src/models/password_reset.rs:67:12
+   |
+33 | impl PasswordResetToken {
+   | ----------------------- method in this implementation
+...
+67 |     pub fn mark_as_used(&mut self) {
+   |            ^^^^^^^^^^^^
+
+warning: struct `RefreshTokenClaims` is never constructed
+  --> src/auth/jwt.rs:21:12
+   |
+21 | pub struct RefreshTokenClaims {
+   |            ^^^^^^^^^^^^^^^^^^
+
+warning: function `generate_refresh_token` is never used
+  --> src/auth/jwt.rs:68:8
+   |
+68 | pub fn generate_refresh_token(user_id: &str) -> String {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_refresh_token` is never used
+  --> src/auth/jwt.rs:97:8
+   |
+97 | pub fn verify_refresh_token(token: &str) -> Option<RefreshTokenClaims> {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_password` is never used
+  --> src/auth/password.rs:10:8
+   |
+10 | pub fn verify_password(password: &str, hash: &str) -> Result<bool, Box<dyn Error>> {
+   |        ^^^^^^^^^^^^^^^
+
+warning: function `create_log_indexes` is never used
+   --> src/database/indexes.rs:140:14
+    |
+140 | pub async fn create_log_indexes(db: &Database) -> Result<(), String> {
+    |              ^^^^^^^^^^^^^^^^^^
+
+warning: function `create_password_reset_indexes` is never used
+   --> src/database/indexes.rs:172:14
+    |
+172 | pub async fn create_password_reset_indexes(db: &Database) -> Result<(), String> {
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: methods `delete_user` and `list_users` are never used
+   --> src/services/user_service.rs:103:18
+    |
+ 10 | impl UserService {
+    | ---------------- methods in this implementation
+...
+103 |     pub async fn delete_user(&self, id: &ObjectId) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    |                  ^^^^^^^^^^^
+...
+113 |     pub async fn list_users(&self, limit: Option<i64>) -> Result<Vec<User>, Box<dyn Error + Send + Sync>> {
+    |                  ^^^^^^^^^^
+
+warning: method `get_logs_by_email` is never used
+   --> src/services/log_service.rs:164:18
+    |
+ 12 | impl LogService {
+    | --------------- method in this implementation
+...
+164 |     pub async fn get_logs_by_email(&self, email: &str, limit: Option<i64>) -> Result<Vec<LoginLog>, Box<dyn Error + Send + Sync>> {
+    |                  ^^^^^^^^^^^^^^^^^
+
+warning: methods `cleanup_expired_tokens` and `get_tokens_by_email` are never used
+   --> src/services/password_reset_service.rs:76:18
+    |
+ 11 | impl PasswordResetService {
+    | ------------------------- methods in this implementation
+...
+ 76 |     pub async fn cleanup_expired_tokens(&self) -> Result<u64, Box<dyn Error + Send + Sync>> {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^
+...
+101 |     pub async fn get_tokens_by_email(
+    |                  ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `SuccessResponse` is never constructed
+  --> src/api/handlers/password_reset.rs:24:12
+   |
+24 | pub struct SuccessResponse {
+   |            ^^^^^^^^^^^^^^^
+
+warning: function `configure_tenant_routes` is never used
+   --> src/api/handlers/tenant_handlers.rs:285:8
+    |
+285 | pub fn configure_tenant_routes(cfg: &mut web::ServiceConfig) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `state` is never read
+  --> src/api/handlers/oauth_handlers.rs:15:5
+   |
+13 | pub struct OAuthCallbackQuery {
+   |            ------------------ field in this struct
+14 |     code: String,
+15 |     state: Option<String>, // CSRF token
+   |     ^^^^^
+
+warning: struct `AuthResponse` is never constructed
+  --> src/api/handlers/oauth_handlers.rs:21:12
+   |
+21 | pub struct AuthResponse {
+   |            ^^^^^^^^^^^^
+
+warning: struct `UserResponse` is never constructed
+  --> src/api/handlers/oauth_handlers.rs:27:12
+   |
+27 | pub struct UserResponse {
+   |            ^^^^^^^^^^^^
+
+warning: function `configure_oauth_routes` is never used
+   --> src/api/handlers/oauth_handlers.rs:359:8
+    |
+359 | pub fn configure_oauth_routes(cfg: &mut web::ServiceConfig) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `AppConfig` is never constructed
+ --> src/config/mod.rs:4:12
+  |
+4 | pub struct AppConfig {
+  |            ^^^^^^^^^
+
+warning: struct `DatabaseConfig` is never constructed
+  --> src/config/mod.rs:12:12
+   |
+12 | pub struct DatabaseConfig {
+   |            ^^^^^^^^^^^^^^
+
+warning: struct `ServerConfig` is never constructed
+  --> src/config/mod.rs:18:12
+   |
+18 | pub struct ServerConfig {
+   |            ^^^^^^^^^^^^
+
+warning: struct `JwtConfig` is never constructed
+  --> src/config/mod.rs:24:12
+   |
+24 | pub struct JwtConfig {
+   |            ^^^^^^^^^
+
+warning: struct `LoggingConfig` is never constructed
+  --> src/config/mod.rs:32:12
+   |
+32 | pub struct LoggingConfig {
+   |            ^^^^^^^^^^^^^
+
+warning: associated function `from_env` is never used
+  --> src/config/mod.rs:38:12
+   |
+37 | impl AppConfig {
+   | -------------- associated function in this implementation
+38 |     pub fn from_env() -> Result<Self, env::VarError> {
+   |            ^^^^^^^^
+
+warning: struct `SecurityHeaders` is never constructed
+  --> src/middleware/security.rs:11:12
+   |
+11 | pub struct SecurityHeaders;
+   |            ^^^^^^^^^^^^^^^
+
+warning: struct `SecurityHeadersMiddleware` is never constructed
+  --> src/middleware/security.rs:31:12
+   |
+31 | pub struct SecurityHeadersMiddleware<S> {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RequestLogger` is never constructed
+   --> src/middleware/security.rs:107:12
+    |
+107 | pub struct RequestLogger;
+    |            ^^^^^^^^^^^^^
+
+warning: struct `RequestLoggerMiddleware` is never constructed
+   --> src/middleware/security.rs:127:12
+    |
+127 | pub struct RequestLoggerMiddleware<S> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RateLimiter` is never constructed
+  --> src/middleware/rate_limit.rs:14:12
+   |
+14 | pub struct RateLimiter {
+   |            ^^^^^^^^^^^
+
+warning: struct `RequestCounter` is never constructed
+  --> src/middleware/rate_limit.rs:24:8
+   |
+24 | struct RequestCounter {
+   |        ^^^^^^^^^^^^^^
+
+warning: associated items `new`, `default`, `strict`, `login`, `check_rate_limit`, and `cleanup` are never used
+  --> src/middleware/rate_limit.rs:30:12
+   |
+29 | impl RateLimiter {
+   | ---------------- associated items in this implementation
+30 |     pub fn new(max_requests: u32, window_secs: u64) -> Self {
+   |            ^^^
+...
+39 |     pub fn default() -> Self {
+   |            ^^^^^^^
+...
+44 |     pub fn strict() -> Self {
+   |            ^^^^^^
+...
+49 |     pub fn login() -> Self {
+   |            ^^^^^
+...
+53 |     async fn check_rate_limit(&self, key: &str) -> Result<(), String> {
+   |              ^^^^^^^^^^^^^^^^
+...
+85 |     pub async fn cleanup(&self) {
+   |                  ^^^^^^^
+
+warning: struct `RateLimiterMiddleware` is never constructed
+   --> src/middleware/rate_limit.rs:114:12
+    |
+114 | pub struct RateLimiterMiddleware<S> {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `UserRateLimiter` is never constructed
+   --> src/middleware/rate_limit.rs:166:12
+    |
+166 | pub struct UserRateLimiter {
+    |            ^^^^^^^^^^^^^^^
+
+warning: associated functions `new` and `default` are never used
+   --> src/middleware/rate_limit.rs:171:12
+    |
+170 | impl UserRateLimiter {
+    | -------------------- associated functions in this implementation
+171 |     pub fn new(max_requests: u32, window_secs: u64) -> Self {
+    |            ^^^
+...
+177 |     pub fn default() -> Self {
+    |            ^^^^^^^
+
+warning: struct `UserRateLimiterMiddleware` is never constructed
+   --> src/middleware/rate_limit.rs:201:12
+    |
+201 | pub struct UserRateLimiterMiddleware<S> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `sanitize_string` is never used
+  --> src/middleware/validation.rs:85:8
+   |
+85 | pub fn sanitize_string(input: &str) -> String {
+   |        ^^^^^^^^^^^^^^^
+
+warning: function `validate_object_id` is never used
+   --> src/middleware/validation.rs:101:8
+    |
+101 | pub fn validate_object_id(id: &str) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: fields `max_connections` and `connection_timeout` are never read
+  --> src/cache/redis_cache.rs:10:9
+   |
+ 8 | pub struct CacheConfig {
+   |            ----------- fields in this struct
+ 9 |     pub redis_url: String,
+10 |     pub max_connections: usize,
+   |         ^^^^^^^^^^^^^^^
+11 |     pub connection_timeout: Duration,
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `CacheConfig` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: field `default_ttl` is never read
+  --> src/cache/redis_cache.rs:31:5
+   |
+29 | pub struct RedisCache {
+   |            ---------- field in this struct
+30 |     pool: Pool,
+31 |     default_ttl: u64,
+   |     ^^^^^^^^^^^
+   |
+   = note: `RedisCache` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: methods `set`, `exists`, `increment_with_ttl`, `ttl`, and `pool_status` are never used
+   --> src/cache/redis_cache.rs:85:18
+    |
+ 34 | impl RedisCache {
+    | --------------- methods in this implementation
+...
+ 85 |     pub async fn set<T: Serialize>(&self, key: &str, value: &T) -> Result<(), String> {
+    |                  ^^^
+...
+124 |     pub async fn exists(&self, key: &str) -> Result<bool, String> {
+    |                  ^^^^^^
+...
+136 |     pub async fn increment_with_ttl(&self, key: &str, ttl_seconds: u64) -> Result<i64, String> {
+    |                  ^^^^^^^^^^^^^^^^^^
+...
+155 |     pub async fn ttl(&self, key: &str) -> Result<i64, String> {
+    |                  ^^^
+...
+179 |     pub fn pool_status(&self) -> (usize, usize) {
+    |            ^^^^^^^^^^^
+
+warning: function `tenant_logs` is never used
+   --> src/cache/redis_cache.rs:199:12
+    |
+199 |     pub fn tenant_logs(tenant_id: &str, page: u32) -> String {
+    |            ^^^^^^^^^^^
+
+warning: function `tenant_pattern` is never used
+   --> src/cache/redis_cache.rs:209:12
+    |
+209 |     pub fn tenant_pattern(tenant_id: &str) -> String {
+    |            ^^^^^^^^^^^^^^
+
+warning: `kong-security-api` (bin "kong-security-api") generated 43 warnings (run `cargo fix --bin "kong-security-api"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.76s
+warning: the following packages contain code that will be rejected by a future version of Rust: redis v0.24.0
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 3`
+     Running `target/debug/kong-security-api`
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer::dns_handle] querying: _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net SRV
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server_pool] sending request: [Query { name: Name("_mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: SRV, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server] reconnecting: NameServerConfig { socket_addr: 100.64.0.1:53, protocol: Udp, tls_dns_name: None, trust_negative_responses: false, bind_addr: None }
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer] enqueueing message:QUERY:[Query { name: Name("_mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: SRV, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server] reconnecting: NameServerConfig { socket_addr: 100.64.0.3:53, protocol: Udp, tls_dns_name: None, trust_negative_responses: false, bind_addr: None }
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer] enqueueing message:QUERY:[Query { name: Name("_mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: SRV, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] final message: ; header 49186:QUERY:RD:NoError:QUERY:0/0/0
+    ; query
+    ;; _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. IN SRV
+    
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] final message: ; header 63403:QUERY:RD:NoError:QUERY:0/0/0
+    ; query
+    ;; _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. IN SRV
+    
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_stream] created socket successfully
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_stream] created socket successfully
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] received message id: 49186
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::error] Response:; header 49186:RESPONSE:RD,RA:NoError:QUERY:3/0/0
+    ; query
+    ;; _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. IN SRV
+    ; answers 3
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-01.mc74nzn.mongodb.net.
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-02.mc74nzn.mongodb.net.
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-00.mc74nzn.mongodb.net.
+    ; nameservers 0
+    ; additionals 0
+    
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::error] Response:; header 49186:RESPONSE:RD,RA:NoError:QUERY:3/0/0
+    ; query
+    ;; _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. IN SRV
+    ; answers 3
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-01.mc74nzn.mongodb.net.
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-02.mc74nzn.mongodb.net.
+    _mongodb._tcp.clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN SRV 0 0 27017 ac-wue2kg4-shard-00-00.mc74nzn.mongodb.net.
+    ; nameservers 0
+    ; additionals 0
+    
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer::dns_handle] querying: clusterdbmongoatlas.mc74nzn.mongodb.net TXT
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server_pool] sending request: [Query { name: Name("clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: TXT, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server] existing connection: NameServerConfig { socket_addr: 100.64.0.3:53, protocol: Udp, tls_dns_name: None, trust_negative_responses: false, bind_addr: None }
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer] enqueueing message:QUERY:[Query { name: Name("clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: TXT, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::name_server::name_server] reconnecting: NameServerConfig { socket_addr: 100.64.0.2:53, protocol: Udp, tls_dns_name: None, trust_negative_responses: false, bind_addr: None }
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer] enqueueing message:QUERY:[Query { name: Name("clusterdbmongoatlas.mc74nzn.mongodb.net"), query_type: TXT, query_class: IN }]
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] final message: ; header 56672:QUERY:RD:NoError:QUERY:0/0/0
+    ; query
+    ;; clusterdbmongoatlas.mc74nzn.mongodb.net. IN TXT
+    
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] final message: ; header 57085:QUERY:RD:NoError:QUERY:0/0/0
+    ; query
+    ;; clusterdbmongoatlas.mc74nzn.mongodb.net. IN TXT
+    
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_stream] created socket successfully
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_stream] created socket successfully
+[2025-12-27T18:30:03Z DEBUG hickory_proto::udp::udp_client_stream] received message id: 57085
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::error] Response:; header 57085:RESPONSE:RD,RA:NoError:QUERY:1/0/0
+    ; query
+    ;; clusterdbmongoatlas.mc74nzn.mongodb.net. IN TXT
+    ; answers 1
+    clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN TXT authSource=admin&replicaSet=atlas-5kwmwj-shard-0
+    ; nameservers 0
+    ; additionals 0
+    
+[2025-12-27T18:30:03Z DEBUG hickory_resolver::error] Response:; header 57085:RESPONSE:RD,RA:NoError:QUERY:1/0/0
+    ; query
+    ;; clusterdbmongoatlas.mc74nzn.mongodb.net. IN TXT
+    ; answers 1
+    clusterdbmongoatlas.mc74nzn.mongodb.net. 60 IN TXT authSource=admin&replicaSet=atlas-5kwmwj-shard-0
+    ; nameservers 0
+    ; additionals 0
+    
+[2025-12-27T18:30:03Z INFO  kong_security_api] 🔧 Initializing database indexes...
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer::dns_exchange] io_stream is done, shutting down
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer::dns_exchange] io_stream is done, shutting down
+[2025-12-27T18:30:03Z DEBUG hickory_proto::xfer::dns_exchange] io_stream is done, shutting down
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-02.mc74nzn.mongodb.net")
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-00.mc74nzn.mongodb.net")
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-01.mc74nzn.mongodb.net")
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:03Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:03Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:03Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+[2025-12-27T18:30:03Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:04Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-02.mc74nzn.mongodb.net")
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:04Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-00.mc74nzn.mongodb.net")
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Resuming session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] No cached session for DnsName("ac-wue2kg4-shard-00-01.mc74nzn.mongodb.net")
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Not resuming any session
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+  ✓ Tenant indexes created
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Resuming using PSK
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:04Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] Using ciphersuite TLS13_AES_128_GCM_SHA256
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Not resuming
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] TLS1.3 encrypted extensions: ServerExtensions { unknown_extensions: {}, .. }
+[2025-12-27T18:30:04Z DEBUG rustls::client::hs] ALPN protocol is None
+[2025-12-27T18:30:04Z DEBUG rustls::client::tls13] Got CertificateRequest CertificateRequestPayloadTls13 { context: , extensions: CertificateRequestExtensions { signature_algorithms: [RSA_PSS_SHA256, ECDSA_NISTP256_SHA256, ED25519, RSA_PSS_SHA384, RSA_PSS_SHA512, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, ECDSA_NISTP384_SHA384, ECDSA_NISTP521_SHA512, RSA_PKCS1_SHA1, ECDSA_SHA1_Legacy], .. } }
+[2025-12-27T18:30:04Z DEBUG rustls::client::common] Client auth requested but no cert/sigscheme available
+  ✓ User indexes created
+✅ Database indexes initialized successfully
+[2025-12-27T18:30:05Z INFO  kong_security_api] ✅ Redis cache connected and ready
+[2025-12-27T18:30:05Z INFO  kong_security_api] 🔧 Initializing OAuth services...
+[2025-12-27T18:30:05Z INFO  kong_security_api] ✅ OAuth services initialized (Google + Apple)
+[2025-12-27T18:30:05Z INFO  kong_security_api] ✅ Database connected successfully
+
+╔══════════════════════════════════════════════════════════════╗
+║          🚀 Kong Security API - Server Started              ║
+╠══════════════════════════════════════════════════════════════╣
+║  📍 Server URL:    http://localhost:8080/api                ║
+║  📊 Swagger UI:    http://localhost:8080/api/swagger-ui/    ║
+║  📖 OpenAPI Spec:  http://localhost:8080/api/api-docs/openapi.json ║
+║  ❤️  Health Check:  http://localhost:8080/api/health         ║
+╠══════════════════════════════════════════════════════════════╣
+║  🔒 Security Features Enabled:                              ║
+║     ✅ CORS Protection                                       ║
+║     ✅ JWT RS256 Authentication                              ║
+║     ✅ BCrypt Password Hashing                               ║
+║     ✅ Input Validation & Sanitization                       ║
+║     ✅ Password Strength Requirements                        ║
+║     ✅ SQL Injection Prevention                              ║
+║     ✅ XSS Prevention                                        ║
+║     ✅ Comprehensive Audit Logging                           ║
+╠══════════════════════════════════════════════════════════════╣
+║  ⚡ Performance Features:                                    ║
+║     ✅ Redis Cache (Tenants & Logs)
+║     ✅ MongoDB Connection Pooling (max 10)                   ║
+║     ✅ Response Compression (gzip/brotli)                    ║
+║     ✅ Optimized Database Queries                            ║
+║     ✅ Zstd/Snappy MongoDB Compression                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+thread 'main' panicked at src/main.rs:195:6:
+Failed to bind server to address: Os { code: 48, kind: AddrInUse, message: "Address already in use" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,11 +1,11 @@
 use actix_web::{web, HttpRequest, HttpResponse, Result};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use mongodb::Database;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use std::time::SystemTime;
 use mongodb::bson::DateTime;
 use validator::Validate;
-use crate::auth::{create_jwt_token, verify_jwt_token};
+use crate::auth::{create_jwt_token, verify_jwt_token, jwt::{verify_refresh_token, generate_jwt, generate_refresh_token}};
 use crate::models::{User, LoginLog};
 use crate::services::{UserService, LogService};
 use crate::middleware::validation::{LoginRequest, RegisterRequest, format_validation_errors};
@@ -14,6 +14,8 @@ use crate::middleware::tenant_validator::get_tenant_id;
 #[derive(Serialize)]
 pub struct AuthResponse {
     token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    refresh_token: Option<String>,
     user: UserResponse,
 }
 
@@ -125,6 +127,7 @@ pub async fn login(
                         let user_email = user.email.clone();
                         let response = AuthResponse {
                             token,
+                            refresh_token: None, // Login tradicional não usa refresh token por enquanto
                             user: UserResponse {
                                 id: user._id.unwrap().to_hex(),
                                 email: user.email,
@@ -258,6 +261,132 @@ pub async fn register(
             Ok(HttpResponse::InternalServerError().json("Internal server error"))
         }
     }
+}
+
+#[derive(Deserialize, Validate)]
+pub struct RefreshTokenRequest {
+    #[validate(length(min = 10, message = "Refresh token is required"))]
+    pub refresh_token: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/auth/refresh",
+    tag = "Authentication",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Token refreshed successfully", body = AuthResponse),
+        (status = 401, description = "Invalid or expired refresh token"),
+        (status = 400, description = "Validation error")
+    ),
+    params(
+        ("X-Tenant-ID" = String, Header, description = "Tenant ID for multi-tenancy")
+    )
+)]
+pub async fn refresh_token(
+    req: HttpRequest,
+    refresh_req: web::Json<RefreshTokenRequest>,
+    db: web::Data<Database>,
+    log_service: web::Data<LogService>,
+) -> Result<HttpResponse> {
+    let tenant_id = get_tenant_id(&req).unwrap_or_else(|| "default".to_string());
+    
+    // Valida o request
+    if let Err(e) = refresh_req.validate() {
+        return Ok(HttpResponse::BadRequest().json(format_validation_errors(e)));
+    }
+    
+    // Verifica o refresh token
+    let refresh_claims = match verify_refresh_token(&refresh_req.refresh_token) {
+        Some(claims) => claims,
+        None => {
+            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "Invalid or expired refresh token"
+            })));
+        }
+    };
+    
+    let user_service = UserService::new(db.get_ref().clone());
+    
+    // Busca o usuário
+    let user = match user_service.find_by_id(&tenant_id, &refresh_claims.sub).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+                "error": "User not found"
+            })));
+        }
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            return Ok(HttpResponse::InternalServerError().json("Internal server error"));
+        }
+    };
+    
+    // Verifica se o refresh token está na lista de tokens válidos do usuário
+    let empty_vec = vec![];
+    let refresh_tokens = user.refresh_tokens.as_ref().unwrap_or(&empty_vec);
+    if !refresh_tokens.contains(&refresh_req.refresh_token) {
+        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": "Refresh token not found or has been revoked"
+        })));
+    }
+    
+    // Gera novo access token e refresh token
+    let new_access_token = generate_jwt(
+        &user._id.unwrap().to_hex(),
+        &user.email,
+        user.roles.clone().unwrap_or_default(),
+        user.is_active,
+        "crypto-exchange-aggregator",
+        "kong-security-api"
+    );
+    
+    let new_refresh_token = generate_refresh_token(&user._id.unwrap().to_hex());
+    
+    // Atualiza a lista de refresh tokens no banco (remove o antigo, adiciona o novo)
+    let mut updated_tokens = refresh_tokens.clone();
+    updated_tokens.retain(|t| t != &refresh_req.refresh_token); // Remove o token usado
+    updated_tokens.push(new_refresh_token.clone()); // Adiciona o novo
+    
+    // Mantém apenas os últimos 5 refresh tokens
+    if updated_tokens.len() > 5 {
+        updated_tokens = updated_tokens.iter().rev().take(5).rev().cloned().collect();
+    }
+    
+    let mut updated_user = user.clone();
+    updated_user.refresh_tokens = Some(updated_tokens);
+    updated_user.last_login = Some(DateTime::from_system_time(SystemTime::now()));
+    
+    if let Err(e) = user_service.update_user(&updated_user).await {
+        eprintln!("Failed to update user refresh tokens: {}", e);
+    }
+    
+    // Log de refresh (opcional)
+    let ip_address = get_client_ip(&req);
+    let user_agent = get_user_agent(&req);
+    let mut login_log = LoginLog::new(
+        tenant_id.clone(),
+        user.email.clone(),
+        true,
+        ip_address,
+        user_agent,
+    );
+    login_log.user_id = Some(updated_user._id.unwrap().to_hex());
+    login_log.token_generated = true;
+    log_service.save_login_log(&login_log).await.ok();
+    
+    let response = AuthResponse {
+        token: new_access_token,
+        refresh_token: Some(new_refresh_token),
+        user: UserResponse {
+            id: updated_user._id.unwrap().to_hex(),
+            email: updated_user.email,
+            name: updated_user.name.unwrap_or_else(|| "User".to_string()),
+            roles: updated_user.roles.unwrap_or_default(),
+        },
+    };
+    
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(

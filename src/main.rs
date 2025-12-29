@@ -106,8 +106,10 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         // Configure CORS
         let cors = Cors::default()
-            .allowed_origin("http://localhost:3000") // Frontend origin
+            .allowed_origin("http://localhost:3000") // Frontend web origin
             .allowed_origin("http://localhost:8080") // API origin
+            .allowed_origin("http://localhost:8081") // Expo Metro bundler (React Native)
+            .allowed_origin("http://localhost:19006") // Expo web
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![
                 header::AUTHORIZATION,
@@ -135,31 +137,44 @@ async fn main() -> std::io::Result<()> {
             // Health check endpoint (sem validação de tenant)
             .route("/api/health", web::get().to(health_check))
             
+            // OAuth callback HTML page (serve arquivo estático)
+            .route("/oauth-callback.html", web::get().to(|| async {
+                let html = include_str!("../static/oauth-callback.html");
+                HttpResponse::Ok()
+                    .content_type("text/html; charset=utf-8")
+                    .body(html)
+            }))
+            
             // Swagger UI (sem validação de tenant)
             .service(
                 SwaggerUi::new("/api/swagger-ui/{_:.*}")
                     .url("/api/api-docs/openapi.json", openapi.clone())
             )
             
-            // API routes with Tenant Validation
+            // Public OAuth routes (NO Tenant Validation required)
+            .service(
+                web::scope("/api/auth")
+                    .route("/google", web::get().to(oauth_handlers::google_auth_url))
+                    .route("/google/callback", web::get().to(oauth_handlers::google_callback))
+                    .route("/apple", web::get().to(oauth_handlers::apple_auth_url))
+                    .route("/apple/callback", web::get().to(oauth_handlers::apple_callback))
+            )
+            
+            // API routes WITH Tenant Validation
             .service(
                 web::scope("/api")
                     .wrap(TenantValidator::new(db.clone()))
-                    // Authentication
+                    // Authentication (requires tenant)
                     .service(
                         web::scope("/auth")
                             .route("/login", web::post().to(login))
                             .route("/register", web::post().to(register))
+                            .route("/refresh", web::post().to(refresh_token))
                             .route("/protected", web::get().to(protected))
                             // Password Reset endpoints
                             .route("/password-reset/request", web::post().to(request_password_reset))
                             .route("/password-reset/validate", web::post().to(validate_reset_token))
                             .route("/password-reset/confirm", web::post().to(confirm_password_reset))
-                            // OAuth endpoints (Google + Apple)
-                            .route("/google", web::get().to(oauth_handlers::google_auth_url))
-                            .route("/google/callback", web::get().to(oauth_handlers::google_auth_callback))
-                            .route("/apple", web::get().to(oauth_handlers::apple_auth_url))
-                            .route("/apple/callback", web::get().to(oauth_handlers::apple_auth_callback))
                     )
                     // Tenants Management (Admin only)
                     .service(

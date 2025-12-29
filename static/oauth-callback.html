@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Autenticando...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 50px 40px;
+            max-width: 400px;
+            position: relative;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+            }
+        }
+        
+        .spinner-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 30px auto;
+        }
+        
+        .spinner {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        .spinner-inner {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            top: 10px;
+            left: 10px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-bottom: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite reverse;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        
+        p {
+            color: rgba(255,255,255,0.9);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            animation: scaleIn 0.5s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .success-icon.show {
+            display: flex;
+        }
+        
+        .dots {
+            display: inline-block;
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 40px 20px;
+            }
+            
+            .logo {
+                width: 70px;
+                height: 70px;
+                font-size: 35px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔐</div>
+        
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="spinner-inner"></div>
+        </div>
+        
+        <div class="success-icon" id="successIcon">✓</div>
+        
+        <h1 id="title">Autenticando<span class="dots">...</span></h1>
+        <p id="message">Aguarde enquanto finalizamos seu login</p>
+    </div>
+    
+    <script>
+        // Função para mostrar feedback de sucesso
+        function showSuccess() {
+            document.querySelector('.spinner-container').style.display = 'none';
+            document.getElementById('successIcon').classList.add('show');
+            document.getElementById('title').textContent = 'Autenticado!';
+            document.getElementById('message').textContent = 'Redirecionando para o app...';
+        }
+        
+        // Extrai os parâmetros da URL
+        const params = new URLSearchParams(window.location.search);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const userId = params.get('user_id');
+        const email = params.get('email');
+        const name = params.get('name');
+        
+        console.log('📱 OAuth Callback Handler Started');
+        console.log('   access_token:', accessToken ? accessToken.substring(0, 20) + '...' : 'missing');
+        console.log('   refresh_token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'missing');
+        console.log('   user_id:', userId);
+        console.log('   email:', email);
+        console.log('   window.opener:', !!window.opener);
+        console.log('   hostname:', window.location.hostname);
+        console.log('   port:', window.location.port);
+        console.log('   referrer:', document.referrer);
+        
+        console.log('🔍 Validation check:', {
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            hasUserId: !!userId,
+            hasEmail: !!email,
+            allValid: !!(accessToken && refreshToken && userId && email)
+        });
+        
+        if (accessToken && refreshToken && userId && email) {
+            console.log('✅ All required data present, proceeding...');
+            // Mostra feedback de sucesso primeiro
+            showSuccess();
+            
+            // Detecta se veio de uma janela popup (web)
+            if (window.opener) {
+                console.log('🌐 Detected web popup - using postMessage');
+                
+                // Aguarda animação antes de enviar mensagem e fechar
+                setTimeout(() => {
+                    console.log('📤 Sending postMessage to parent window...');
+                    const messageData = {
+                        type: 'OAUTH_SUCCESS',
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                        user_id: userId,
+                        email: email,
+                        name: name
+                    };
+                    console.log('📦 Message data:', {
+                        type: messageData.type,
+                        has_access_token: !!messageData.access_token,
+                        has_refresh_token: !!messageData.refresh_token,
+                        user_id: messageData.user_id,
+                        email: messageData.email
+                    });
+                    
+                    window.opener.postMessage(messageData, '*');
+                    console.log('✅ PostMessage sent!');
+                    
+                    // Fecha popup imediatamente após enviar mensagem (transparente)
+                    setTimeout(() => {
+                        console.log('🚪 Closing popup...');
+                        window.close();
+                    }, 100); // Reduzido de 300ms para 100ms
+                }, 300); // Reduzido de 600ms para 300ms
+            } else {
+                // Se não tem window.opener, verifica o referrer
+                const referrerUrl = document.referrer;
+                const isFromReactNativeWeb = referrerUrl.includes(':19006') || referrerUrl.includes(':8081');
+                
+                if (isFromReactNativeWeb) {
+                    console.log('🌐 Detected React Native Web via referrer');
+                    // Extrai a origem do referrer
+                    const referrerOrigin = new URL(referrerUrl).origin;
+                    const appUrl = `${referrerOrigin}/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}`;
+                    console.log('   Redirecting to:', appUrl);
+                    
+                    // Aguarda animação antes de redirecionar
+                    setTimeout(() => {
+                        window.location.href = appUrl;
+                    }, 800);
+                } else {
+                    console.log('📱 Detected mobile - using deep link');
+                    const deepLink = `exp://localhost:8081/--/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}`;
+                    console.log('   Deep link:', deepLink);
+                    
+                    // Aguarda animação antes de redirecionar
+                    setTimeout(() => {
+                        window.location.href = deepLink;
+                    }, 800);
+                }
+            }
+        } else {
+            console.error('❌ Missing OAuth parameters');
+            document.querySelector('.spinner-container').style.display = 'none';
+            document.getElementById('title').textContent = 'Erro na autenticação';
+            document.getElementById('message').textContent = 'Parâmetros OAuth ausentes. Tente novamente.';
+        }
+    </script>
+</body>
+</html>

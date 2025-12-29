@@ -3,7 +3,7 @@ use oauth2::{
     AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl,
     basic::BasicClient, 
     reqwest::async_http_client,
-    AuthorizationCode, CsrfToken, PkceCodeChallenge, Scope,
+    AuthorizationCode, CsrfToken, Scope,
     TokenResponse,
 };
 use reqwest;
@@ -92,13 +92,16 @@ impl OAuthService {
         let client = self.google_client.as_ref()
             .ok_or("Google OAuth not configured")?;
 
-        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+        // Removendo PKCE temporariamente para desenvolvimento
+        // Em produção, deve-se armazenar o pkce_verifier no Redis/sessão
+        // let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
         let (auth_url, csrf_token) = client
             .authorize_url(CsrfToken::new_random)
+            .add_scope(Scope::new("openid".to_string()))
             .add_scope(Scope::new("email".to_string()))
             .add_scope(Scope::new("profile".to_string()))
-            .set_pkce_challenge(pkce_challenge)
+            // .set_pkce_challenge(pkce_challenge)  // Comentado para desenvolvimento
             .url();
 
         Ok((auth_url.to_string(), csrf_token.secret().clone()))
@@ -123,11 +126,23 @@ impl OAuthService {
         let client = self.google_client.as_ref()
             .ok_or("Google OAuth not configured")?;
 
-        let token_result = client
+        log::info!("🔄 Exchanging Google authorization code...");
+        
+        let token_result = match client
             .exchange_code(AuthorizationCode::new(code))
             .request_async(async_http_client)
-            .await?;
+            .await {
+                Ok(token) => token,
+                Err(e) => {
+                    log::error!("❌ Google token exchange failed: {:?}", e);
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Google token exchange error: {}", e)
+                    )));
+                }
+            };
 
+        log::info!("✅ Google token exchange successful");
         Ok(token_result.access_token().secret().clone())
     }
 
@@ -148,17 +163,33 @@ impl OAuthService {
     /// Buscar informações do usuário do Google
     pub async fn get_google_user_info(&self, access_token: &str) -> Result<OAuthUserInfo, Box<dyn Error + Send + Sync>> {
         let client = reqwest::Client::new();
+        
+        log::info!("📥 Fetching Google user info...");
+        
+        // Usando v3 da API que retorna o campo 'sub' consistentemente
         let response = client
-            .get("https://www.googleapis.com/oauth2/v2/userinfo")
+            .get("https://www.googleapis.com/oauth2/v3/userinfo")
             .bearer_auth(access_token)
             .send()
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("Failed to get user info: {}", response.status()).into());
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            log::error!("❌ Failed to get Google user info. Status: {}, Body: {}", status, error_text);
+            return Err(format!("Failed to get user info: {} - {}", status, error_text).into());
         }
 
-        let google_user: GoogleUserInfo = response.json().await?;
+        let response_text = response.text().await?;
+        log::info!("📄 Google user info response: {}", response_text);
+        
+        let google_user: GoogleUserInfo = serde_json::from_str(&response_text)
+            .map_err(|e| {
+                log::error!("❌ Failed to parse Google user info: {}", e);
+                format!("Failed to parse user info: {}", e)
+            })?;
+
+        log::info!("✅ Google user info fetched successfully: {}", google_user.email);
 
         Ok(OAuthUserInfo {
             email: google_user.email,

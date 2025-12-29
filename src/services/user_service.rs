@@ -39,6 +39,30 @@ impl UserService {
         }
     }
 
+    /// Buscar usuário por ID e tenant
+    pub async fn find_by_id(
+        &self, 
+        tenant_id: &str, 
+        user_id: &str
+    ) -> Result<Option<User>, Box<dyn Error + Send + Sync>> {
+        let collection = self.users_collection();
+        
+        let object_id = match ObjectId::parse_str(user_id) {
+            Ok(id) => id,
+            Err(e) => return Err(Box::new(e)),
+        };
+        
+        let filter = doc! { 
+            "_id": object_id,
+            "tenant_id": tenant_id,
+        };
+        
+        match collection.find_one(filter).await {
+            Ok(user) => Ok(user),
+            Err(e) => Err(Box::new(e)),
+        }
+    }
+
     /// Buscar usuário por OAuth provider e OAuth ID
     pub async fn find_by_oauth(
         &self, 

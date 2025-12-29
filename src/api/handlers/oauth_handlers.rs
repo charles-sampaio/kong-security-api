@@ -4,7 +4,7 @@ use mongodb::Database;
 use std::time::SystemTime;
 use mongodb::bson::DateTime;
 
-use crate::auth::create_jwt_token;
+use crate::auth::{create_jwt_token, jwt::generate_refresh_token};
 use crate::models::{User, user::OAuthProvider, LoginLog};
 use crate::services::{UserService, LogService, OAuthService};
 use crate::middleware::tenant_validator::get_tenant_id;
@@ -20,6 +20,8 @@ pub struct OAuthCallbackQuery {
 #[derive(Serialize)]
 pub struct AuthResponse {
     token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    refresh_token: Option<String>,
     user: UserResponse,
 }
 
@@ -141,15 +143,8 @@ pub async fn google_callback(
     log_service: web::Data<LogService>,
     oauth_service: web::Data<OAuthService>,
 ) -> Result<HttpResponse> {
-    // Extrair tenant_id
-    let tenant_id = match get_tenant_id(&req) {
-        Some(id) => id,
-        None => {
-            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-                "error": "Tenant ID required"
-            })));
-        }
-    };
+    // Para OAuth público, use tenant_id padrão se não fornecido
+    let tenant_id = get_tenant_id(&req).unwrap_or_else(|| "default".to_string());
 
     // Autenticar com Google
     let user_info = match oauth_service.authenticate_google(query.code.clone()).await {
@@ -204,7 +199,7 @@ pub async fn google_callback(
         }
     };
 
-    // Gerar JWT
+    // Gerar JWT e Refresh Token
     let token = match create_jwt_token(&user) {
         Ok(t) => t,
         Err(e) => {
@@ -214,29 +209,76 @@ pub async fn google_callback(
             })));
         }
     };
+    
+    let user_id_hex = user._id.unwrap().to_hex();
+    let refresh_token = generate_refresh_token(&user_id_hex);
+    
+    // Adiciona refresh token ao usuário no banco
+    let mut updated_user = user.clone();
+    let mut refresh_tokens = updated_user.refresh_tokens.unwrap_or_default();
+    refresh_tokens.push(refresh_token.clone());
+    
+    // Mantém apenas os últimos 5 refresh tokens
+    if refresh_tokens.len() > 5 {
+        refresh_tokens = refresh_tokens.iter().rev().take(5).rev().cloned().collect();
+    }
+    
+    updated_user.refresh_tokens = Some(refresh_tokens);
+    user_service.update_user(&updated_user).await.ok();
 
     // Registrar log de login
     let mut login_log = LoginLog::new(
         tenant_id.clone(),
-        user.email.clone(),
+        updated_user.email.clone(),
         true,
         ip_address,
         user_agent,
     );
-    login_log.user_id = Some(user._id.unwrap().to_hex());
+    login_log.user_id = Some(user_id_hex.clone());
     login_log.token_generated = true;
     log_service.save_login_log(&login_log).await.ok();
 
-    Ok(HttpResponse::Ok().json(AuthResponse {
-        token,
-        user: UserResponse {
-            id: user._id.unwrap().to_hex(),
-            email: user.email,
-            name: user.name,
-            picture: user.picture,
-            roles: user.roles.unwrap_or_default(),
-        },
-    }))
+    // Detecta se é uma requisição AJAX (Accept: application/json)
+    let accept_header = req.headers()
+        .get("accept")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+    
+    let is_ajax = accept_header.contains("application/json");
+    
+    if is_ajax {
+        // Para requisições AJAX, retorna JSON diretamente (popup web)
+        println!("🌐 AJAX request detected, returning JSON response");
+        return Ok(HttpResponse::Ok().json(serde_json::json!({
+            "success": true,
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "user": {
+                "id": user_id_hex,
+                "email": updated_user.email,
+                "name": updated_user.name.unwrap_or_default()
+            }
+        })));
+    }
+    
+    // Para navegadores normais, redireciona para oauth-callback.html (popup web ou mobile)
+    // A página HTML irá detectar se é popup (window.opener) ou mobile (deep link)
+    let callback_url = format!(
+        "/oauth-callback.html?access_token={}&refresh_token={}&user_id={}&email={}&name={}",
+        urlencoding::encode(&token),
+        urlencoding::encode(&refresh_token),
+        urlencoding::encode(&user_id_hex),
+        urlencoding::encode(&updated_user.email),
+        urlencoding::encode(&updated_user.name.unwrap_or_default())
+    );
+    
+    println!("🔄 Redirecting to oauth-callback.html:");
+    println!("   User ID: {}", user_id_hex);
+    println!("   Email: {}", user.email);
+    
+    Ok(HttpResponse::Found()
+        .append_header(("Location", callback_url))
+        .finish())
 }
 
 /// GET /api/auth/apple/callback
@@ -264,15 +306,8 @@ pub async fn apple_callback(
     log_service: web::Data<LogService>,
     oauth_service: web::Data<OAuthService>,
 ) -> Result<HttpResponse> {
-    // Extrair tenant_id
-    let tenant_id = match get_tenant_id(&req) {
-        Some(id) => id,
-        None => {
-            return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-                "error": "Tenant ID required"
-            })));
-        }
-    };
+    // Para OAuth público, use tenant_id padrão se não fornecido
+    let tenant_id = get_tenant_id(&req).unwrap_or_else(|| "default".to_string());
 
     // Autenticar com Apple
     let user_info = match oauth_service.authenticate_apple(
@@ -353,16 +388,18 @@ pub async fn apple_callback(
     login_log.token_generated = true;
     log_service.save_login_log(&login_log).await.ok();
 
-    Ok(HttpResponse::Ok().json(AuthResponse {
-        token,
-        user: UserResponse {
-            id: user._id.unwrap().to_hex(),
-            email: user.email,
-            name: user.name,
-            picture: user.picture,
-            roles: user.roles.unwrap_or_default(),
-        },
-    }))
+    // Para mobile apps, redireciona para o app com os dados na URL
+    let redirect_url = format!(
+        "exp://localhost:8081/--/auth/callback?access_token={}&user_id={}&email={}&name={}",
+        urlencoding::encode(&token),
+        urlencoding::encode(&user._id.unwrap().to_hex()),
+        urlencoding::encode(&user.email),
+        urlencoding::encode(&user.name.unwrap_or_default())
+    );
+
+    Ok(HttpResponse::Found()
+        .append_header(("Location", redirect_url))
+        .finish())
 }
 
 pub fn configure_oauth_routes(cfg: &mut web::ServiceConfig) {

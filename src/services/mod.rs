@@ -8,4 +8,4 @@ pub use user_service::UserService;
 pub use log_service::LogService;
 pub use password_reset_service::PasswordResetService;
 pub use tenant_service::TenantService;
-pub use oauth_service::{OAuthService, OAuthConfig, OAuthUserInfo};
+pub use oauth_service::{OAuthService, OAuthConfig};
